@@ -31,6 +31,8 @@ FROM php-base
 
 WORKDIR /var/www/html
 
+ENV LOG_CHANNEL=stderr
+
 COPY . .
 COPY --from=php-deps /app/vendor ./vendor
 COPY --from=assets /app/public/build ./public/build

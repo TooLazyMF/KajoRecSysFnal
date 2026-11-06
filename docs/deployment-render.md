@@ -19,6 +19,7 @@ runtime does not include Composer, so deploy it as a Docker web service instead.
    - `SESSION_DRIVER=database`
    - `CACHE_STORE=database`
    - `QUEUE_CONNECTION=database`
+   - `LOG_CHANNEL=stderr`
 4. Deploy. The container installs PHP dependencies with Composer, builds the
    frontend assets, runs database migrations, and starts Laravel on Render's
    assigned port.
