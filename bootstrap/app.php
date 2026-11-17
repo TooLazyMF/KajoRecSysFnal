@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\EnsureTeacherProfileComplete;
+use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\TrackAccountSession;
 use Illuminate\Console\Scheduling\Schedule;
@@ -21,6 +21,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('appointments:notify-overdue')->everyMinute()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustProxies(
+            at: '*',
+            headers: Request::HEADER_X_FORWARDED_PROTO,
+        );
         $middleware->redirectGuestsTo(fn () => route('home'));
 
         $middleware->web(append: [

@@ -32,6 +32,19 @@ class DashboardTest extends TestCase
             ->assertSee('dark:bg-[#20783e]', false);
     }
 
+    public function test_asset_urls_use_the_forwarded_https_scheme(): void
+    {
+        $response = $this->withHeaders([
+            'X-Forwarded-Proto' => 'https',
+        ])->get('/');
+
+        $response->assertOk();
+        $this->assertMatchesRegularExpression(
+            '/href="https:\/\/[^"]+\/build\/assets\/app-[^"]+\.css"/',
+            $response->getContent(),
+        );
+    }
+
     public function test_guidance_dashboard_monthly_report_uses_same_origin_and_loads(): void
     {
         $counselor = User::factory()->create(['role' => 'guidance_counselor']);
