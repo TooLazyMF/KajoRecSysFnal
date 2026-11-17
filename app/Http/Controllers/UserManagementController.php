@@ -2,17 +2,29 @@
 
 namespace App\Http\Controllers;
 
+use App\Concerns\PasswordValidationRules;
 use App\Models\StudentReference;
+use App\Models\SlipSubmission;
+use App\Models\TeacherReference;
 use App\Models\User;
+use App\Notifications\TeacherAccountCreated;
+use App\Rules\UniqueEncryptedLookup;
+use App\Support\SensitiveLookup;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Throwable;
 
 class UserManagementController extends Controller
 {
+    use PasswordValidationRules;
+
     public function importStudents(Request $request): RedirectResponse
     {
         $request->validate([
@@ -66,12 +78,13 @@ class UserManagementController extends Controller
             }
 
             $rows[$idNumber] = [
-                'id_number' => $idNumber,
-                'name' => $name,
-                'gender' => $gender,
-                'year' => $this->normalizeYearLevel($year),
-                'course' => $this->valueFromHeader($values, $headerMap, 'course'),
-                'source_data' => json_encode($sourceData, JSON_THROW_ON_ERROR),
+                'id_number' => Crypt::encryptString($idNumber),
+                'id_number_lookup_hash' => SensitiveLookup::hash('id_number', $idNumber),
+                'name' => Crypt::encryptString($name),
+                'gender' => Crypt::encryptString($gender),
+                'year' => Crypt::encryptString($this->normalizeYearLevel($year)),
+                'course' => Crypt::encryptString((string) $this->valueFromHeader($values, $headerMap, 'course')),
+                'source_data' => json_encode(Crypt::encryptString(json_encode($sourceData, JSON_THROW_ON_ERROR)), JSON_THROW_ON_ERROR),
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
@@ -86,16 +99,19 @@ class UserManagementController extends Controller
         $isUpdate = StudentReference::query()->exists();
 
         DB::transaction(function () use ($rows): void {
-            $ids = array_map('strval', array_keys($rows));
+            $ids = array_values(array_filter(array_map(
+                fn (string $id): ?string => SensitiveLookup::hash('id_number', $id),
+                array_keys($rows),
+            )));
 
             StudentReference::query()->upsert(
                 array_values($rows),
-                ['id_number'],
+                ['id_number_lookup_hash'],
                 ['name', 'gender', 'year', 'course', 'source_data', 'updated_at']
             );
 
             // The uploaded file is the complete roster for the current school year.
-            StudentReference::query()->whereNotIn('id_number', $ids)->delete();
+            StudentReference::query()->whereNotIn('id_number_lookup_hash', $ids)->delete();
 
             $studentUsers = User::query()
                 ->where('role', 'student')
@@ -105,22 +121,23 @@ class UserManagementController extends Controller
                 fn (User $user) => StudentReference::normalizeIdNumber($user->id_number)
             );
 
-            foreach ($rows as $row) {
-                $matchingUserIds = $studentUsersByNumber->get($row['id_number'], collect())->pluck('id');
+            foreach ($rows as $idNumber => $row) {
+                $matchingUserIds = $studentUsersByNumber->get($idNumber, collect())->pluck('id');
                 if ($matchingUserIds->isNotEmpty()) {
-                    User::query()->whereKey($matchingUserIds)->update([
-                        'name' => $row['name'],
-                        'gender' => $row['gender'],
-                        'is_active' => true,
-                        'is_graduated' => false,
-                        'updated_at' => now(),
-                    ]);
+                    User::query()->whereKey($matchingUserIds)->get()->each(function (User $user) use ($row): void {
+                        $user->forceFill([
+                            'name' => Crypt::decryptString($row['name']),
+                            'gender' => Crypt::decryptString($row['gender']),
+                            'is_active' => true,
+                            'is_graduated' => false,
+                        ])->save();
+                    });
                 }
             }
 
             $missingUserIds = $studentUsers
                 ->reject(fn (User $user) => in_array(
-                    StudentReference::normalizeIdNumber($user->id_number),
+                    SensitiveLookup::hash('id_number', StudentReference::normalizeIdNumber($user->id_number)),
                     $ids,
                     true,
                 ))
@@ -137,12 +154,104 @@ class UserManagementController extends Controller
             : ' student records imported successfully. Future uploads will update this roster automatically.'));
     }
 
+    public function importTeachers(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'teacher_file' => ['required', 'file', 'mimes:xlsx,csv,txt', 'max:20480'],
+        ]);
+
+        $file = $request->file('teacher_file');
+        $fileRows = strtolower($file->getClientOriginalExtension()) === 'xlsx'
+            ? $this->readXlsxRows($file->getRealPath(), 'teacher_file')
+            : $this->readCsvRows($file->getRealPath(), 'teacher_file');
+
+        $rows = [];
+        $hasSeenFirstName = false;
+
+        foreach ($fileRows as $rowIndex => $values) {
+            $cells = array_map(fn ($value) => trim((string) $value, " \t\r\n\xEF\xBB\xBF"), $values);
+            $names = array_values(array_filter($cells, fn (string $value) => $value !== ''));
+
+            if ($names === []) {
+                continue;
+            }
+
+            $header = preg_replace('/[^a-z0-9]/', '', strtolower($names[0])) ?? '';
+            if (! $hasSeenFirstName) {
+                $hasSeenFirstName = true;
+                if (count($names) === 1 && in_array($header, [
+                    'name',
+                    'fullname',
+                    'teachername',
+                    'teachernames',
+                    'teachersname',
+                    'teacherfullname',
+                    'teachersfullname',
+                    'nameofteacher',
+                ], true)) {
+                    continue;
+                }
+            }
+
+            if (count($names) !== 1) {
+                throw ValidationException::withMessages([
+                    'teacher_file' => 'The teacher file must contain one teacher name per row, in a single column.',
+                ]);
+            }
+
+            $name = $names[0];
+            if (mb_strlen($name) > 255) {
+                throw ValidationException::withMessages([
+                    'teacher_file' => 'Teacher names must be 255 characters or fewer.',
+                ]);
+            }
+
+            $normalizedName = TeacherReference::normalizeName($name);
+            if ($normalizedName === '') {
+                throw ValidationException::withMessages([
+                    'teacher_file' => 'The teacher file contains an invalid name on row '.($rowIndex + 1).'.',
+                ]);
+            }
+
+            $lookupHash = SensitiveLookup::hash('name', $normalizedName);
+            $rows[$lookupHash] = [
+                'name' => Crypt::encryptString($name),
+                'name_lookup_hash' => $lookupHash,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        if ($rows === []) {
+            throw ValidationException::withMessages([
+                'teacher_file' => 'No teacher names were found in the file.',
+            ]);
+        }
+
+        $isUpdate = TeacherReference::query()->exists();
+
+        DB::transaction(function () use ($rows): void {
+            TeacherReference::query()->upsert(
+                array_values($rows),
+                ['name_lookup_hash'],
+                ['name', 'updated_at'],
+            );
+            TeacherReference::query()
+                ->whereNotIn('name_lookup_hash', array_keys($rows))
+                ->delete();
+        });
+
+        return to_route('guidance.dashboard')->with('status', count($rows).($isUpdate
+            ? ' teacher names updated. Only listed names can be used to create teacher accounts.'
+            : ' teacher names imported. Only listed names can be used to create teacher accounts.'));
+    }
+
     /** @return array<int, array<int, string>> */
-    private function readCsvRows(string $path): array
+    private function readCsvRows(string $path, string $errorKey = 'student_file'): array
     {
         $handle = fopen($path, 'rb');
         if ($handle === false) {
-            throw ValidationException::withMessages(['student_file' => 'The student file could not be read.']);
+            throw ValidationException::withMessages([$errorKey => 'The file could not be read.']);
         }
 
         try {
@@ -161,11 +270,11 @@ class UserManagementController extends Controller
     }
 
     /** @return array<int, array<int, string>> */
-    private function readXlsxRows(string $path): array
+    private function readXlsxRows(string $path, string $errorKey = 'student_file'): array
     {
         $zip = new \ZipArchive;
         if ($zip->open($path) !== true) {
-            throw ValidationException::withMessages(['student_file' => 'The Excel file could not be read.']);
+            throw ValidationException::withMessages([$errorKey => 'The Excel file could not be read.']);
         }
 
         try {
@@ -175,7 +284,7 @@ class UserManagementController extends Controller
             $sheetXml = $sheetName ? $zip->getFromName($sheetName) : false;
 
             if ($sheetXml === false) {
-                throw ValidationException::withMessages(['student_file' => 'The Excel file has no readable worksheet.']);
+                throw ValidationException::withMessages([$errorKey => 'The Excel file has no readable worksheet.']);
             }
 
             $sharedStrings = [];
@@ -190,7 +299,7 @@ class UserManagementController extends Controller
 
             $sheet = simplexml_load_string($sheetXml);
             if ($sheet === false) {
-                throw ValidationException::withMessages(['student_file' => 'The Excel worksheet could not be read.']);
+                throw ValidationException::withMessages([$errorKey => 'The Excel worksheet could not be read.']);
             }
 
             $rows = [];
@@ -356,19 +465,180 @@ class UserManagementController extends Controller
 
         $students = User::query()
             ->where('role', 'student')
-            ->orderBy('name')
-            ->get(['id', 'name', 'email', 'id_number', 'gender', 'is_active', 'is_graduated'])
-            ->filter(fn (User $student) => filled(
-                $studentReferences->get(StudentReference::normalizeIdNumber($student->id_number))?->year
-            ))
-            ->values();
+            ->orderBy('id')
+            ->get(['id', 'name', 'email', 'id_number', 'gender', 'is_active', 'is_graduated']);
+
+        $studentCifs = SlipSubmission::query()
+            ->whereIn('user_id', $students->pluck('id'))
+            ->where('slip', 'qf-bo-oss-04-client-information-form')
+            ->latest()
+            ->get()
+            ->unique('user_id')
+            ->mapWithKeys(fn (SlipSubmission $submission) => [$submission->user_id => $submission->data?->getArrayCopy() ?? []]);
 
         $teachers = User::query()
             ->where('role', 'teacher')
-            ->orderBy('name')
+            ->withExists(['accountSessionLogs as has_logged_in'])
+            ->orderBy('id')
             ->paginate(25);
+        $teacherReferences = TeacherReference::query()
+            ->get(['id', 'name'])
+            ->sortBy(fn (TeacherReference $reference) => mb_strtolower($reference->name))
+            ->values();
 
-        return view('admin.users', compact('students', 'studentReferences', 'teachers'));
+        return view('admin.users', compact('students', 'studentReferences', 'studentCifs', 'teachers', 'teacherReferences'));
+    }
+
+    public function createTeacher(Request $request): RedirectResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'first_name' => ['required', 'string', 'max:100'],
+            'last_name' => ['required', 'string', 'max:100'],
+            'middle_initial' => ['required', 'string', 'max:5', 'regex:/^[A-Za-z](?:\.)?$/'],
+            'teacher_id' => ['required', 'string', 'max:255', new UniqueEncryptedLookup('users', 'id_number')],
+            'email' => ['required', 'email', 'max:255', new UniqueEncryptedLookup('users', 'email')],
+            'password' => [
+                ...$this->passwordRules(),
+            ],
+            'counselor_password' => ['required', 'string'],
+        ], [
+            'password.regex' => 'Password must contain letters and numbers only.',
+        ]);
+
+        if ($validator->fails()) {
+            return back()
+                ->withErrors($validator)
+                ->withInput($request->except(['password', 'counselor_password']));
+        }
+
+        $counselor = $request->user();
+        $validated = $validator->validated();
+        $teacherName = trim($validated['first_name'].' '.$validated['middle_initial'].' '.$validated['last_name']);
+
+        if (TeacherReference::query()->exists()) {
+            $nameLookupHash = SensitiveLookup::hash(
+                'name',
+                TeacherReference::normalizeName($teacherName),
+            );
+
+            if (! TeacherReference::query()->where('name_lookup_hash', $nameLookupHash)->exists()) {
+                return back()
+                    ->withErrors(['first_name' => 'The teacher name must match a name in the imported teacher list.'])
+                    ->withInput($request->except(['password', 'counselor_password']));
+            }
+        }
+
+        if (! $counselor instanceof User
+            || ! Hash::check($validated['counselor_password'], $counselor->getAuthPassword())) {
+            return back()
+                ->withErrors(['counselor_password' => 'The counselor password is incorrect.'])
+                ->withInput($request->except(['password', 'counselor_password']));
+        }
+
+        if (Hash::check($validated['password'], $counselor->getAuthPassword())) {
+            return back()
+                ->withErrors(['password' => 'The teacher initial password must be different from your counselor password.'])
+                ->withInput($request->except(['password', 'counselor_password']));
+        }
+
+        $teacher = User::forceCreate([
+            'name' => $teacherName,
+            'email' => $validated['email'],
+            'id_number' => $validated['teacher_id'],
+            'gender' => null,
+            'role' => 'teacher',
+            'password' => $validated['password'],
+            'is_active' => false,
+            'must_change_password' => false,
+        ]);
+
+        $verificationSent = true;
+        try {
+            $teacher->notify(new TeacherAccountCreated);
+        } catch (Throwable $exception) {
+            report($exception);
+            $verificationSent = false;
+        }
+
+        return to_route('admin.users.index')->with(
+            'status',
+            $verificationSent
+                ? 'Teacher account created. A verification email was sent to '.$teacher->email.'.'
+                : 'Teacher account created, but the verification email could not be sent. Please check your internet connection and edit the teacher account to retry.'
+        );
+    }
+
+    public function editTeacher(User $user): View
+    {
+        abort_unless($user->role === 'teacher', 404);
+        abort_if($user->accountSessionLogs()->exists(), 403, 'Teacher account information is locked after the teacher signs in.');
+
+        $nameParts = preg_split('/\s+/', trim($user->name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $firstName = array_shift($nameParts) ?? '';
+        $lastName = count($nameParts) > 0 ? array_pop($nameParts) : '';
+        $middleInitial = trim(implode(' ', $nameParts));
+
+        return view('admin.teacher-edit', compact('user', 'firstName', 'middleInitial', 'lastName'));
+    }
+
+    public function updateTeacher(Request $request, User $user): RedirectResponse
+    {
+        abort_unless($user->role === 'teacher', 404);
+        abort_if($user->accountSessionLogs()->exists(), 403, 'Teacher account information is locked after the teacher signs in.');
+
+        $validated = $request->validate([
+            'first_name' => ['required', 'string', 'max:100'],
+            'last_name' => ['required', 'string', 'max:100'],
+            'middle_initial' => ['required', 'string', 'max:5', 'regex:/^[A-Za-z](?:\.)?$/'],
+            'teacher_id' => ['required', 'string', 'max:255', new UniqueEncryptedLookup('users', 'id_number', $user->id)],
+            'email' => ['required', 'email', 'max:255', new UniqueEncryptedLookup('users', 'email', $user->id)],
+            'counselor_password' => ['required', 'string'],
+        ]);
+
+        $counselor = $request->user();
+        if (! $counselor instanceof User || ! Hash::check($validated['counselor_password'], $counselor->getAuthPassword())) {
+            return back()->withErrors(['counselor_password' => 'The counselor password is incorrect.'])->withInput();
+        }
+
+        $emailChanged = strtolower((string) $user->email) !== strtolower($validated['email']);
+        $user->forceFill([
+            'name' => trim($validated['first_name'].' '.$validated['middle_initial'].' '.$validated['last_name']),
+            'email' => $validated['email'],
+            'id_number' => $validated['teacher_id'],
+            'email_verified_at' => $emailChanged ? null : $user->email_verified_at,
+            'is_active' => $emailChanged ? false : $user->is_active,
+        ])->save();
+
+        $verificationSent = true;
+        if ($emailChanged || ! $user->hasVerifiedEmail()) {
+            try {
+                $user->notify(new TeacherAccountCreated);
+            } catch (Throwable $exception) {
+                report($exception);
+                $verificationSent = false;
+            }
+        }
+
+        return to_route('admin.users.index')->with(
+            'status',
+            $verificationSent
+                ? 'Teacher account information updated successfully.'
+                : 'Teacher information was updated, but the verification email could not be sent. Please check your internet connection and edit the account to retry.'
+        );
+    }
+
+    public function verifyCreatedTeacher(Request $request, User $user): RedirectResponse
+    {
+        abort_unless($user->role === 'teacher', 404);
+
+        if (! $user->hasVerifiedEmail()) {
+            $user->forceFill([
+                'email_verified_at' => now(),
+                'is_active' => true,
+            ])->save();
+        }
+
+        return to_route('home')->with('status', 'Your KajoRec teacher account is verified and active. You may now sign in.');
     }
 
     public function updateStatus(Request $request, User $user): RedirectResponse

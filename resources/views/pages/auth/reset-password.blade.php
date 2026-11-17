@@ -26,6 +26,9 @@
                 :label="__('Password')"
                 type="password"
                 required
+                minlength="8"
+                pattern="(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]+"
+                title="Use letters and numbers only, with at least one of each."
                 autocomplete="new-password"
                 :placeholder="__('Password')"
                 passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
@@ -38,6 +41,9 @@
                 :label="__('Confirm password')"
                 type="password"
                 required
+                minlength="8"
+                pattern="(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]+"
+                title="Use letters and numbers only, with at least one of each."
                 autocomplete="new-password"
                 :placeholder="__('Confirm password')"
                 passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"

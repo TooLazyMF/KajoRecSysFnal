@@ -35,7 +35,7 @@
                                 @foreach ($assignments as $assignment)
                                     @php
                                         $title = $assignment->slip === 'cns'
-                                            ? 'Certificate of No Scholarship'
+                                            ? 'Slip Information'
                                             : ($slips[$assignment->slip]['title'] ?? 'Assigned Slip');
                                     @endphp
                                     <tr>
@@ -59,21 +59,12 @@
                                         </td>
                                         <td class="px-5 py-4 text-right">
                                             @if ($assignment->slip === 'student-referral-slip' && ($assignment->slipSubmission?->data['submitted_by_teacher'] ?? false))
-                                                @if ($assignment->status === 'pending')
-                                                    <a
-                                                        href="{{ route('assigned-slips.fillup', $assignment) }}"
-                                                        class="inline-flex items-center justify-center rounded-lg bg-[#09ba44] px-4 py-2 text-xs font-semibold text-[#092010] hover:bg-[#079b38] dark:bg-[#20783e] dark:text-white dark:hover:bg-[#28894a]"
-                                                    >
-                                                        Review and submit referral
-                                                    </a>
-                                                @else
-                                                    <a
-                                                        href="{{ route('slips.submissions.show', $assignment->slipSubmission) }}"
-                                                        class="font-semibold text-[#28643a] hover:underline dark:text-[#91dfa6]"
-                                                    >
-                                                        View submitted referral
-                                                    </a>
-                                                @endif
+                                                <a
+                                                    href="{{ route('slips.submissions.show', $assignment->slipSubmission) }}"
+                                                    class="font-semibold text-[#28643a] hover:underline dark:text-[#91dfa6]"
+                                                >
+                                                    View referral sent to Guidance
+                                                </a>
                                             @elseif (in_array($assignment->status, ['pending', 'submitted'], true))
                                                 <a
                                                     href="{{ route('assigned-slips.fillup', $assignment) }}"
@@ -85,6 +76,7 @@
                                                 <div class="flex flex-wrap items-center justify-end gap-3">
                                                     @if ($assignment->slipSubmission)
                                                         <a href="{{ route('slips.submissions.show', $assignment->slipSubmission) }}" class="font-semibold text-[#28643a] hover:underline dark:text-[#91dfa6]">View completed result</a>
+                                                        <a href="{{ route('slips.submissions.pdf', $assignment->slipSubmission) }}" class="font-semibold text-[#28643a] hover:underline dark:text-[#91dfa6]">Download completed PDF</a>
                                                     @endif
                                                     @if ($assignment->student_sent_to_teacher_at)
                                                         <span class="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800 dark:bg-green-950 dark:text-green-200">Sent to teacher</span>
@@ -95,20 +87,40 @@
                                                         </form>
                                                     @endif
                                                 </div>
-                                            @elseif ($assignment->slip === 'cns' && $assignment->cnsRequest)
-                                                <a
-                                                    href="{{ route('cns.requests.show', $assignment->cnsRequest) }}"
-                                                    class="font-semibold text-[#28643a] hover:underline dark:text-[#91dfa6]"
-                                                >
-                                                    View {{ $assignment->status === 'approved' ? 'approved' : 'submitted' }} form
-                                                </a>
+                                            @elseif ($assignment->slip === 'cns' && $assignment->slipInformation)
+                                                <div class="flex flex-wrap justify-end gap-3">
+                                                    <a
+                                                        href="{{ route('slip-informations.show', $assignment->slipInformation) }}"
+                                                        class="font-semibold text-[#28643a] hover:underline dark:text-[#91dfa6]"
+                                                    >
+                                                        View {{ $assignment->status === 'approved' ? 'approved' : 'submitted' }} form
+                                                    </a>
+                                                    @if ($assignment->status === 'approved')
+                                                        <a
+                                                            href="{{ route('slip-informations.pdf', $assignment->slipInformation) }}"
+                                                            class="font-semibold text-[#28643a] hover:underline dark:text-[#91dfa6]"
+                                                        >
+                                                            Download completed PDF
+                                                        </a>
+                                                    @endif
+                                                </div>
                                             @elseif ($assignment->slipSubmission)
-                                                <a
-                                                    href="{{ route('slips.submissions.show', $assignment->slipSubmission) }}"
-                                                    class="font-semibold text-[#28643a] hover:underline dark:text-[#91dfa6]"
-                                                >
-                                                    View {{ $assignment->status === 'approved' ? 'approved' : 'submitted' }} form
-                                                </a>
+                                                <div class="flex flex-wrap justify-end gap-3">
+                                                    <a
+                                                        href="{{ route('slips.submissions.show', $assignment->slipSubmission) }}"
+                                                        class="font-semibold text-[#28643a] hover:underline dark:text-[#91dfa6]"
+                                                    >
+                                                        View {{ $assignment->status === 'approved' ? 'approved' : 'submitted' }} form
+                                                    </a>
+                                                    @if ($assignment->status === 'approved')
+                                                        <a
+                                                            href="{{ route('slips.submissions.pdf', $assignment->slipSubmission) }}"
+                                                            class="font-semibold text-[#28643a] hover:underline dark:text-[#91dfa6]"
+                                                        >
+                                                            Download completed PDF
+                                                        </a>
+                                                    @endif
+                                                </div>
                                             @endif
                                         </td>
                                     </tr>

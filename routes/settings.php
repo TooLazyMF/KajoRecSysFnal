@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountLogController;
+use App\Http\Controllers\SlipSubmissionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -8,6 +9,8 @@ Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
 
     Route::livewire('settings/profile', 'pages::settings.profile')->name('profile.edit');
+    Route::get('settings/profile/client-information', [SlipSubmissionController::class, 'editClientInformation'])
+        ->name('profile.client-information.edit');
     Route::get('settings/account-logs', [AccountLogController::class, 'index'])->name('account-logs.index');
 });
 

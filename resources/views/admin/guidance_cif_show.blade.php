@@ -9,7 +9,7 @@
         </div>
         <main class="overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100 shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
             <iframe
-                src="{{ route('slips.submissions.pdf', $submission) }}#page=3&toolbar=0&navpanes=0&zoom=page-width"
+                src="{{ route('slips.submissions.system-preview', $submission) }}"
                 title="{{ $submission->user?->name ?? 'Student' }} Client Information Form"
                 class="w-full border-0"
                 style="height: calc(100vh - 8rem); min-height: 700px;"

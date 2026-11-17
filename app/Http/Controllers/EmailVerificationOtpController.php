@@ -5,59 +5,133 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Services\AccountSessionLogger;
 use App\Services\EmailOtpService;
+use App\Services\PendingRegistrationService;
 use Illuminate\Auth\Events\Verified;
-use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class EmailVerificationOtpController extends Controller
 {
-    public const PENDING_USER_SESSION_KEY = 'pending_email_verification_user_id';
-
-    public function registrationNotice(Request $request): View|RedirectResponse
+    public function registrationNotice(Request $request, PendingRegistrationService $pendingRegistration): RedirectResponse
     {
-        if (! $this->pendingUser($request)) {
+        if (! $pendingRegistration->registration($request)) {
             return to_route('register');
         }
 
-        return view('pages::auth.verify-email');
+        return to_route('home');
     }
 
-    public function send(Request $request): RedirectResponse
+    public function cancelRegistration(Request $request, PendingRegistrationService $pendingRegistration): RedirectResponse
     {
-        $user = $this->verificationUser($request);
+        if (! $pendingRegistration->registration($request)) {
+            $pendingRegistration->finish($request);
 
-        if (! $user instanceof User) {
-            return to_route('login');
+            return to_route('home')
+                ->with('registration_panel', true)
+                ->withErrors(['registration' => 'There is no pending registration to cancel.']);
         }
 
-        if ($user->hasVerifiedEmail()) {
-            return to_route('dashboard');
+        $registrationInput = $pendingRegistration->formInput($request);
+        $pendingRegistration->finish($request);
+
+        return to_route('home')
+            ->withInput($registrationInput)
+            ->with('registration_cancelled', true)
+            ->with('status', 'Email verification cancelled. Your details are still here; submit the form when you are ready to try again.');
+    }
+
+    public function send(Request $request, PendingRegistrationService $pendingRegistration): RedirectResponse
+    {
+        try {
+            if ($pendingRegistration->registration($request)) {
+                $pendingRegistration->sendCode($request);
+
+                return back()->with('status', 'A verification code has been sent to your email address.');
+            }
+
+            $user = $this->verificationUser($request);
+
+            if (! $user instanceof User) {
+                return to_route('home');
+            }
+
+            if ($user->hasVerifiedEmail()) {
+                return to_route($this->dashboardRouteFor($user));
+            }
+
+            $user->sendEmailVerificationNotification();
+
+            return back()->with('status', 'A verification code has been sent to your registered email address.');
+        } catch (TransportExceptionInterface $exception) {
+            Log::error('Email verification code could not be sent.', [
+                'user_id' => $request->user()?->id,
+                'exception' => $exception,
+            ]);
+
+            return back()
+                ->with('mail_transport_error', true)
+                ->withErrors([
+                    'email' => 'Please check your internet connection and try again. We could not send the verification email.',
+                ]);
         }
-
-        $user->sendEmailVerificationNotification();
-
-        return back()->with('status', 'A verification code has been sent to your registered email address.');
     }
 
     public function verify(
         Request $request,
         EmailOtpService $otp,
         AccountSessionLogger $sessionLogger,
+        PendingRegistrationService $pendingRegistration,
+        \App\Actions\Fortify\CreateNewUser $createNewUser,
     ): RedirectResponse {
         $request->validate([
             'otp' => ['required', 'digits:6'],
         ]);
 
+        $registration = $pendingRegistration->registration($request);
+
+        if ($registration) {
+            if (! $pendingRegistration->verify($request, $request->string('otp')->toString())) {
+                return back()
+                    ->withErrors(['otp' => 'The code is invalid or has expired. Request a new code and try again.'])
+                    ->withInput();
+            }
+
+            try {
+                $user = $createNewUser->createVerified($registration);
+            } catch (ValidationException $exception) {
+                $registrationInput = $pendingRegistration->formInput($request);
+                $pendingRegistration->finish($request);
+
+                return to_route('home')
+                    ->withInput($registrationInput)
+                    ->with('registration_panel', true)
+                    ->withErrors($exception->errors());
+            }
+
+            if ($user->markEmailAsVerified()) {
+                event(new Verified($user));
+            }
+
+            $pendingRegistration->finish($request);
+            Auth::guard('web')->login($user);
+            $request->session()->regenerate();
+            $sessionLogger->start($request, $user);
+
+            return redirect()->to(route($this->dashboardRouteFor($user), absolute: false).'?verified=1');
+        }
+
         $user = $this->verificationUser($request);
 
         if (! $user instanceof User) {
-            return to_route('login');
+            return to_route('home');
         }
 
         if ($user->hasVerifiedEmail()) {
-            return to_route('dashboard');
+            return to_route($this->dashboardRouteFor($user));
         }
 
         if (! $otp->verify($user, 'email-verification', $request->string('otp')->toString())) {
@@ -70,18 +144,7 @@ class EmailVerificationOtpController extends Controller
             event(new Verified($user));
         }
 
-        $isPendingRegistration = $this->isPendingRegistration($request, $user);
-
-        if ($isPendingRegistration) {
-            $request->session()->forget(self::PENDING_USER_SESSION_KEY);
-            Auth::guard('web')->login($user);
-            $request->session()->regenerate();
-            $sessionLogger->start($request, $user);
-        }
-
-        $dashboard = $isPendingRegistration ? $this->dashboardRouteFor($user) : 'dashboard';
-
-        return redirect()->to(route($dashboard, absolute: false).'?verified=1');
+        return redirect()->to(route($this->dashboardRouteFor($user), absolute: false).'?verified=1');
     }
 
     private function verificationUser(Request $request): ?User
@@ -92,21 +155,7 @@ class EmailVerificationOtpController extends Controller
             return $authenticatedUser;
         }
 
-        return $this->pendingUser($request);
-    }
-
-    private function pendingUser(Request $request): ?User
-    {
-        $id = $request->session()->get(self::PENDING_USER_SESSION_KEY);
-        $user = is_numeric($id) ? User::query()->find($id) : null;
-
-        return $user instanceof User && ! $user->hasVerifiedEmail() ? $user : null;
-    }
-
-    private function isPendingRegistration(Request $request, User $user): bool
-    {
-        return ! $request->user()
-            && (int) $request->session()->get(self::PENDING_USER_SESSION_KEY) === (int) $user->getKey();
+        return null;
     }
 
     private function dashboardRouteFor(User $user): string

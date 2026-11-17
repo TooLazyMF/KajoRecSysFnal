@@ -45,9 +45,10 @@ class StudentDashboardController extends Controller
         }
 
         $assignments = SlipAssignment::query()
-            ->with(['assignedBy', 'slipSubmission', 'cnsRequest'])
+            ->with(['assignedBy', 'slipSubmission', 'slipInformation'])
             ->where('student_id', $student->id)
             ->whereIn('slip', SlipCatalog::workflowSlugs())
+            ->where('slip', '!=', 'qf-bo-oss-04-client-information-form')
             ->latest()
             ->limit(5)
             ->get();
@@ -57,6 +58,7 @@ class StudentDashboardController extends Controller
         $history = SlipSubmission::query()
             ->where('user_id', $student->id)
             ->whereIn('slip', $workflowSlugs)
+            ->where('slip', '!=', 'qf-bo-oss-04-client-information-form')
             ->latest()
             ->limit(5)
             ->get()
@@ -80,16 +82,19 @@ class StudentDashboardController extends Controller
             'pendingAssignmentsCount' => SlipAssignment::query()
                 ->where('student_id', $student->id)
                 ->whereIn('slip', $workflowSlugs)
+                ->where('slip', '!=', 'qf-bo-oss-04-client-information-form')
                 ->where('status', 'pending')
                 ->count(),
             'awaitingApprovalCount' => SlipAssignment::query()
                 ->where('student_id', $student->id)
                 ->whereIn('slip', $workflowSlugs)
+                ->where('slip', '!=', 'qf-bo-oss-04-client-information-form')
                 ->where('status', 'submitted')
                 ->count(),
             'submittedSlipsCount' => SlipSubmission::query()
                 ->where('user_id', $student->id)
                 ->whereIn('slip', $workflowSlugs)
+                ->where('slip', '!=', 'qf-bo-oss-04-client-information-form')
                 ->count(),
             'assignments' => $assignments,
             'history' => $history,

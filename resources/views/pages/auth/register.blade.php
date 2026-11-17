@@ -51,6 +51,9 @@
                 :label="__('Password')"
                 type="password"
                 required
+                minlength="8"
+                pattern="(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]+"
+                title="Use letters and numbers only, with at least one of each."
                 autocomplete="new-password"
                 :placeholder="__('Password')"
                 passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
@@ -63,6 +66,9 @@
                 :label="__('Confirm password')"
                 type="password"
                 required
+                minlength="8"
+                pattern="(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]+"
+                title="Use letters and numbers only, with at least one of each."
                 autocomplete="new-password"
                 :placeholder="__('Confirm password')"
                 passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
@@ -78,7 +84,7 @@
 
         <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-600 dark:text-zinc-400">
             <span>{{ __('Already have an account?') }}</span>
-            <flux:link :href="route('login')" wire:navigate>{{ __('Log in') }}</flux:link>
+                <flux:link :href="route('home')" wire:navigate>{{ __('Log in') }}</flux:link>
         </div>
     </div>
 </x-layouts::auth>

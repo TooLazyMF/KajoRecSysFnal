@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#3b82f6"/>
+    </marker>
+    <style>
+      .title { font: 700 32px 'Segoe UI', Arial, sans-serif; fill: #111827; }
+      .node-text { font: 600 22px 'Segoe UI', Arial, sans-serif; fill: #1f2937; }
+      .small-text { font: 600 18px 'Segoe UI', Arial, sans-serif; fill: #374151; }
+      .rect { fill: #e0f2fe; stroke: #0284c7; stroke-width: 3; rx: 18; }
+      .decision { fill: #fef3c7; stroke: #d97706; stroke-width: 3; }
+      .start-end { fill: #dcfce7; stroke: #16a34a; stroke-width: 3; }
+      .flow { stroke: #3b82f6; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+      .arrow-text { font: 600 16px 'Segoe UI', Arial, sans-serif; fill: #374151; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="700" fill="#f8fafc"/>
+  <text x="600" y="60" text-anchor="middle" class="title">Activity Diagram</text>
+
+  <!-- Start -->
+  <circle cx="600" cy="120" r="50" class="start-end"/>
+  <text x="600" y="128" text-anchor="middle" class="node-text">Start</text>
+
+  <!-- Receive Request -->
+  <rect x="470" y="200" width="260" height="80" class="rect"/>
+  <text x="600" y="250" text-anchor="middle" class="node-text">Receive Request</text>
+
+  <!-- Validate Input -->
+  <rect x="470" y="330" width="260" height="80" class="rect"/>
+  <text x="600" y="380" text-anchor="middle" class="node-text">Validate Input</text>
+
+  <!-- Decision -->
+  <polygon points="600,470 760,550 600,630 440,550" class="decision"/>
+  <text x="600" y="550" text-anchor="middle" class="small-text">Valid?</text>
+
+  <!-- Process -->
+  <rect x="170" y="520" width="230" height="80" class="rect"/>
+  <text x="285" y="570" text-anchor="middle" class="node-text">Process Data</text>
+
+  <!-- Reject -->
+  <rect x="800" y="520" width="230" height="80" class="rect"/>
+  <text x="915" y="570" text-anchor="middle" class="node-text">Reject Request</text>
+
+  <!-- Save -->
+  <rect x="170" y="620" width="230" height="80" class="rect"/>
+  <text x="285" y="670" text-anchor="middle" class="node-text">Save Result</text>
+
+  <!-- Notify -->
+  <rect x="800" y="620" width="230" height="80" class="rect"/>
+  <text x="915" y="670" text-anchor="middle" class="node-text">Notify User</text>
+
+  <!-- End -->
+  <circle cx="600" cy="690" r="50" class="start-end"/>
+  <text x="600" y="698" text-anchor="middle" class="node-text">End</text>
+
+  <!-- Arrows -->
+  <path d="M600 170 L600 200" class="flow"/>
+  <path d="M600 280 L600 330" class="flow"/>
+  <path d="M600 410 L600 470" class="flow"/>
+
+  <!-- Decision branches -->
+  <path d="M440 550 L285 550 L285 520" class="flow"/>
+  <text x="350" y="525" class="arrow-text">Yes</text>
+
+  <path d="M760 550 L915 550 L915 520" class="flow"/>
+  <text x="840" y="525" class="arrow-text">No</text>
+
+  <!-- Process to Save -->
+  <path d="M285 600 L285 620" class="flow"/>
+
+  <!-- Reject to End -->
+  <path d="M915 600 L915 640" class="flow"/>
+  <path d="M915 640 L915 690 L650 690" class="flow"/>
+
+  <!-- Save to End -->
+  <path d="M400 660 L600 660" class="flow"/>
+  <path d="M600 660 L600 690" class="flow"/>
+</svg>

@@ -16,6 +16,15 @@ class AuthenticationTest extends TestCase
         $response = $this->get(route('login'));
 
         $response->assertOk()
+            ->assertSee('About Us')
+            ->assertSee('What is KajoRec?')
+            ->assertSee('web-based Guidance Office Record Management and Appointment System')
+            ->assertSee('Our Purpose')
+            ->assertSee('Our Goals')
+            ->assertSee('Who Can Use KajoRec?')
+            ->assertSee('Guidance Counselors')
+            ->assertSee('Administrative Staff')
+            ->assertSee('Students and Teachers')
             ->assertSee('Contact Us')
             ->assertSee('We are the researchers behind KajoRec.')
             ->assertSee('mailto:kajorec@gmail.com')
@@ -33,7 +42,7 @@ class AuthenticationTest extends TestCase
 
         $response
             ->assertSessionHasNoErrors()
-            ->assertRedirect(route('dashboard', absolute: false));
+            ->assertRedirect(route('student.dashboard', absolute: false));
 
         $this->assertAuthenticated();
     }

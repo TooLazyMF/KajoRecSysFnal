@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1090" viewBox="0 0 1600 1090">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#dc2626"/>
+    </marker>
+    <style>
+      .title { font: 700 30px 'Segoe UI', Arial, sans-serif; fill: #111827; }
+      .subtitle { font: 400 16px 'Segoe UI', Arial, sans-serif; fill: #475569; }
+      .lane-title { font: 700 17px 'Segoe UI', Arial, sans-serif; fill: #111827; }
+      .label { font: 600 17px 'Segoe UI', Arial, sans-serif; fill: #111827; }
+      .body { font: 500 15px 'Segoe UI', Arial, sans-serif; fill: #1f2937; }
+      .small { font: 600 14px 'Segoe UI', Arial, sans-serif; fill: #374151; }
+      .lane { fill: #ffffff; stroke: #1f2937; stroke-width: 1.5; }
+      .lane-head { fill: #fbbf24; stroke: #1f2937; stroke-width: 1.5; }
+      .action { fill: #ffcc4d; stroke: #e11d48; stroke-width: 2; }
+      .role-card { fill: #fff7db; stroke: #e11d48; stroke-width: 2; }
+      .decision { fill: #ffcc4d; stroke: #e11d48; stroke-width: 2; }
+      .flow { stroke: #dc2626; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+      .branch { stroke: #dc2626; stroke-width: 2.5; fill: none; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1090" fill="#ffffff"/>
+  <text x="800" y="42" text-anchor="middle" class="title">KAJORECSYS ROLE-BASED LOGIN ACTIVITY DIAGRAM</text>
+  <text x="800" y="70" text-anchor="middle" class="subtitle">Login, access the dashboard and features for your role, then log out</text>
+
+  <!-- Login swimlanes -->
+  <rect x="40" y="95" width="600" height="455" class="lane"/>
+  <rect x="640" y="95" width="920" height="455" class="lane"/>
+  <rect x="40" y="95" width="600" height="36" class="lane-head"/>
+  <rect x="640" y="95" width="920" height="36" class="lane-head"/>
+  <text x="340" y="119" text-anchor="middle" class="lane-title">User (Student, Teacher, or Guidance Counselor)</text>
+  <text x="1100" y="119" text-anchor="middle" class="lane-title">KajoRecSys System</text>
+
+  <!-- Login flow -->
+  <circle cx="1095" cy="158" r="13" fill="#111827"/>
+  <path d="M1095 171 L1095 188" class="flow"/>
+  <rect x="935" y="192" width="320" height="58" rx="14" class="action"/>
+  <text x="1095" y="227" text-anchor="middle" class="label">Display Login Form</text>
+
+  <path d="M935 221 L820 221 L820 280 L555 280" class="flow"/>
+  <rect x="120" y="252" width="435" height="58" rx="14" class="action"/>
+  <text x="337" y="287" text-anchor="middle" class="label">Enter email and password</text>
+
+  <path d="M555 281 L760 281" class="flow"/>
+  <rect x="765" y="254" width="400" height="62" rx="14" class="action"/>
+  <text x="965" y="280" text-anchor="middle" class="label">Validate credentials and account</text>
+  <text x="965" y="301" text-anchor="middle" class="small">Check active account, email verification, and OTP if required</text>
+
+  <path d="M965 316 L965 341" class="flow"/>
+  <polygon points="1095,335 1185,382 1095,429 1005,382" class="decision"/>
+  <text x="1095" y="388" text-anchor="middle" class="label">Login valid?</text>
+
+  <path d="M1185 382 L1240 382" class="flow"/>
+  <text x="1200" y="368" class="small">No</text>
+  <rect x="1245" y="352" width="270" height="62" rx="14" class="action"/>
+  <text x="1380" y="378" text-anchor="middle" class="label">Display login error</text>
+  <text x="1380" y="399" text-anchor="middle" class="small">Wrong email or password</text>
+  <path d="M1380 414 L1380 470 L585 470 L585 310 L555 310" class="flow"/>
+  <text x="1195" y="460" class="small">Retry</text>
+
+  <path d="M1095 429 L1095 470 L1095 478" class="flow"/>
+  <text x="1110" y="453" class="small">Yes</text>
+  <polygon points="1095,477 1175,520 1095,543 1015,520" class="decision"/>
+  <text x="1095" y="526" text-anchor="middle" class="small">Identify role</text>
+
+  <!-- Role-based access area -->
+  <rect x="40" y="575" width="490" height="310" rx="14" class="role-card"/>
+  <rect x="555" y="575" width="490" height="310" rx="14" class="role-card"/>
+  <rect x="1070" y="575" width="490" height="310" rx="14" class="role-card"/>
+
+  <rect x="40" y="575" width="490" height="42" rx="14" class="lane-head"/>
+  <rect x="555" y="575" width="490" height="42" rx="14" class="lane-head"/>
+  <rect x="1070" y="575" width="490" height="42" rx="14" class="lane-head"/>
+  <text x="285" y="603" text-anchor="middle" class="lane-title">Student</text>
+  <text x="800" y="603" text-anchor="middle" class="lane-title">Teacher</text>
+  <text x="1315" y="603" text-anchor="middle" class="lane-title">Guidance Counselor</text>
+
+  <!-- Role routing -->
+  <path d="M1095 543 L1095 558 L285 558 L285 575" class="flow"/>
+  <path d="M1095 558 L800 558 L800 575" class="flow"/>
+  <path d="M1095 558 L1315 558 L1315 575" class="flow"/>
+
+  <!-- Student activities -->
+  <text x="72" y="650" class="label">Student Dashboard: can view or do</text>
+  <text x="82" y="684" class="body">• Complete or update Client Information Form</text>
+  <text x="82" y="716" class="body">• Access assigned forms and school documents</text>
+  <text x="82" y="748" class="body">• Request counseling appointments</text>
+  <text x="82" y="780" class="body">• View form, appointment, and Class Admission status</text>
+
+  <!-- Teacher activities -->
+  <text x="587" y="650" class="label">Teacher Dashboard: can view or do</text>
+  <text x="597" y="684" class="body">• View student information</text>
+  <text x="597" y="716" class="body">• Assign forms and create referrals</text>
+  <text x="597" y="748" class="body">• Track referrals and follow-ups</text>
+  <text x="597" y="780" class="body">• View Class Admission results</text>
+
+  <!-- Guidance activities -->
+  <text x="1102" y="650" class="label">Guidance Dashboard: can view or do</text>
+  <text x="1112" y="684" class="body">• Review forms, referrals, and student records</text>
+  <text x="1112" y="716" class="body">• Manage counseling appointments</text>
+  <text x="1112" y="748" class="body">• Issue Class Admission Slips</text>
+  <text x="1112" y="780" class="body">• Review absence evidence</text>
+
+  <!-- Logout paths -->
+  <path d="M285 885 L285 905" class="flow"/>
+  <path d="M800 885 L800 905" class="flow"/>
+  <path d="M1315 885 L1315 905" class="flow"/>
+  <rect x="200" y="910" width="170" height="56" rx="14" class="action"/>
+  <rect x="715" y="910" width="170" height="56" rx="14" class="action"/>
+  <rect x="1230" y="910" width="170" height="56" rx="14" class="action"/>
+  <text x="285" y="945" text-anchor="middle" class="label">Log out</text>
+  <text x="800" y="945" text-anchor="middle" class="label">Log out</text>
+  <text x="1315" y="945" text-anchor="middle" class="label">Log out</text>
+
+  <path d="M285 966 L285 1000 L800 1000" class="branch"/>
+  <path d="M800 966 L800 1000" class="branch"/>
+  <path d="M1315 966 L1315 1000 L800 1000" class="branch"/>
+  <path d="M800 1000 L800 1020" class="flow"/>
+  <circle cx="800" cy="1040" r="14" fill="#111827"/>
+  <circle cx="800" cy="1040" r="21" fill="none" stroke="#111827" stroke-width="3"/>
+  <text x="800" y="1076" text-anchor="middle" class="small">End</text>
+</svg>

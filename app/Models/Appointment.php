@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\EncryptedJsonArray;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,9 +15,15 @@ class Appointment extends Model
         return [
             'scheduled_at' => 'datetime',
             'duration_minutes' => 'integer',
+            'purpose' => 'encrypted',
+            'concerns' => 'encrypted',
+            'decline_reason' => 'encrypted',
+            'guidance_message' => 'encrypted',
+            'reschedule_reason' => 'encrypted',
+            'action_taken' => 'encrypted',
             'reviewed_at' => 'datetime',
             'completed_at' => 'datetime',
-            'attachments' => 'array',
+            'attachments' => EncryptedJsonArray::class,
         ];
     }
 

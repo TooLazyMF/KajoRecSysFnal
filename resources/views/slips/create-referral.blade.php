@@ -29,24 +29,28 @@
 
                     <dialog id="student_picker" class="w-[min(56rem,calc(100%-2rem))] max-h-[85vh] rounded-2xl border border-zinc-200 bg-white p-0 text-zinc-900 shadow-2xl backdrop:bg-black/60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100">
                         <div class="sticky top-0 z-10 border-b border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900 sm:p-6">
-                            <div class="flex items-start justify-between gap-4"><div><h2 class="text-xl font-bold">Select a student</h2><p class="mt-1 text-base text-zinc-600 dark:text-zinc-300">Students are arranged by course. Search by name, student ID, or course.</p></div><button type="button" id="close_student_picker" aria-label="Close student picker" class="rounded-lg px-3 py-1 text-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800">&times;</button></div>
+                            <div class="flex items-start justify-between gap-4"><div><h2 class="text-xl font-bold">Select a student</h2><p class="mt-1 text-base text-zinc-600 dark:text-zinc-300">Students are arranged by college and course. Search by name, student ID, college, or course.</p></div><button type="button" id="close_student_picker" aria-label="Close student picker" class="rounded-lg px-3 py-1 text-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800">&times;</button></div>
                             <label for="student_search" class="sr-only">Search students</label>
                             <input id="student_search" type="search" autocomplete="off" placeholder="Search name, ID, or course…" class="mt-4 w-full rounded-lg border-zinc-300 bg-white px-4 py-3 text-base shadow-sm focus:border-green-700 focus:ring-green-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100">
                         </div>
                         <div id="student_picker_list" class="max-h-[58vh] overflow-y-auto p-4 sm:p-6">
-                            @foreach ($students->groupBy(fn ($student) => $studentReferences->get(\App\Models\StudentReference::normalizeIdNumber($student->id_number))?->course ?: 'Course not listed')->sortKeys() as $course => $courseStudents)
-                                <section class="student-course-group mb-6 last:mb-0" data-course-group>
-                                    <h3 class="mb-2 border-b border-zinc-200 pb-2 text-base font-bold text-emerald-800 dark:border-zinc-700 dark:text-emerald-300">{{ $course }}</h3>
+                            @foreach ($students->groupBy(fn ($student) => \App\Support\SlipCatalog::canonicalCollege($studentCifs->get($student->id)['college'] ?? null) ?: 'College not listed')->sortKeys() as $college => $collegeStudents)
+                                <section class="student-college-group mb-6 last:mb-0" data-course-group>
+                                    <h3 class="mb-2 border-b border-emerald-300 pb-2 text-base font-bold text-emerald-800 dark:border-emerald-700 dark:text-emerald-300">{{ \App\Support\SlipCatalog::collegeOptions()[$college] ?? $college }}</h3>
+                                @foreach ($collegeStudents->groupBy(fn ($student) => $studentCifs->get($student->id)['course'] ?? $studentReferences->get(\App\Models\StudentReference::normalizeIdNumber($student->id_number))?->course ?: 'Course not listed')->sortKeys() as $course => $courseStudents)
+                                    <h4 class="mb-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">{{ $course }}</h4>
                                     <div class="grid gap-2 sm:grid-cols-2">
                                         @foreach ($courseStudents as $student)
                                             @php($studentReference = $studentReferences->get(\App\Models\StudentReference::normalizeIdNumber($student->id_number)))
-                                            @php($studentCourse = $studentReference?->course)
-                                            @php($studentYear = $studentReference?->year)
+                                            @php($studentCif = $studentCifs->get($student->id, []))
+                                            @php($studentCourse = $studentCif['course'] ?? $studentReference?->course)
+                                            @php($studentYear = $studentCif['year_level'] ?? $studentReference?->year)
                                             <button type="button" class="student-choice rounded-xl border border-zinc-200 p-4 text-left hover:border-emerald-500 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-600 dark:border-zinc-700 dark:hover:bg-zinc-800" data-student-id="{{ $student->id }}" data-id-number="{{ $student->id_number }}" data-name="{{ $student->name }}" data-sex="{{ ucfirst($student->gender) }}" data-program-year="{{ trim(implode(' ', array_filter([$studentCourse, $studentYear]))) }}" data-search="{{ strtolower($student->name.' '.$student->id_number.' '.$studentCourse.' '.$studentYear) }}">
                                                 <span class="block text-base font-semibold">{{ $student->name }}</span><span class="mt-1 block text-sm text-zinc-600 dark:text-zinc-300">{{ $student->id_number ?: 'No student ID' }} · {{ trim(implode(' ', array_filter([$studentCourse, $studentYear]))) ?: 'Course not listed' }}</span>
                                             </button>
                                         @endforeach
                                     </div>
+                                @endforeach
                                 </section>
                             @endforeach
                             <p id="no_students_match" class="hidden rounded-lg bg-zinc-50 p-5 text-center text-base text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">No students match your search.</p>
@@ -131,10 +135,12 @@
                             </label>
                         </div>
                         <div>
-                            <p class="text-sm text-zinc-500 dark:text-zinc-400">Enter the number of days first, then select the date for each absence or tardy. One referral will be sent for each selected date.</p>
+                            <p class="text-sm text-zinc-500 dark:text-zinc-400">Enter the number of days first, then select the date and cause for each absence or tardy. Absences with the same cause will be grouped into one referral.</p>
                             <div id="absence_dates" class="mt-3 grid gap-3 sm:grid-cols-2"></div>
+                            <div id="absence_reasons" class="mt-3 grid gap-3 sm:grid-cols-2"></div>
                         </div>
 
+                        @if (false)
                         @foreach ($slip['groups'] as $group)
                             @foreach ($group['fields'] as $field)
                                 @if ($field['type'] === 'checkboxes')
@@ -175,6 +181,7 @@
                                 @endif
                             @endforeach
                         @endforeach
+                        @endif
                     </section>
 
                     <label class="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-base text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100">
@@ -194,6 +201,7 @@
     </main>
 
     @if (!$students->isEmpty())
+        @php($referralReasonField = collect($slip['groups'])->flatMap(fn ($group) => $group['fields'])->firstWhere('key', 'referral_reasons'))
         <script>
             const studentSelect = document.getElementById('student_id');
             const studentPicker = document.getElementById('student_picker');
@@ -254,24 +262,13 @@
             studentSelect.addEventListener('change', updateStudentDetails);
             updateStudentDetails();
 
-            const reasonInputs = document.querySelectorAll('input[name="details[referral_reasons][]"]');
-            const otherReason = document.getElementById('other_reason');
-            const updateOtherReasonRequirement = () => {
-                const otherSelected = document.querySelector('input[name="details[referral_reasons][]"]:checked')?.value === 'other';
-                otherReason.disabled = !otherSelected;
-                otherReason.readOnly = !otherSelected;
-                if (!otherSelected) otherReason.value = '';
-                otherReason.required = otherSelected;
-                otherReason.setAttribute('aria-required', otherSelected ? 'true' : 'false');
-            };
-
-            reasonInputs.forEach((input) => input.addEventListener('change', updateOtherReasonRequirement));
-            updateOtherReasonRequirement();
-
             const daysAbsentInput = document.getElementById('days_absent');
             const absenceDates = document.getElementById('absence_dates');
             const dateAbsentInput = document.getElementById('date_absent');
             const oldAbsenceDates = @json(old('details.absence_dates', []));
+            const oldAbsenceReasons = @json(old('details.absence_reasons', []));
+            const oldOtherReasons = @json(old('details.absence_other_reasons', []));
+            const reasonOptions = @json($referralReasonField['options'] ?? []);
             const today = new Date().toISOString().split('T')[0];
 
             const updateDateValidation = () => {
@@ -296,8 +293,13 @@
                 const count = Math.min(Math.max(Number.parseInt(daysAbsentInput.value || '0', 10), 0), 365);
                 const currentDates = Array.from(absenceDates.querySelectorAll('input[type="date"]')).map((input) => input.value);
                 const dates = currentDates.length ? currentDates : oldAbsenceDates;
+                const currentReasons = Array.from(document.querySelectorAll('#absence_reasons select')).map((input) => input.value);
+                const currentOtherReasons = Array.from(document.querySelectorAll('#absence_reasons input[data-other-reason]')).map((input) => input.value);
+                const reasons = currentReasons.length ? currentReasons : oldAbsenceReasons;
+                const otherReasons = currentOtherReasons.length ? currentOtherReasons : oldOtherReasons;
 
                 absenceDates.innerHTML = '';
+                document.getElementById('absence_reasons').innerHTML = '';
                 for (let index = 0; index < count; index += 1) {
                     const label = document.createElement('label');
                     label.className = 'block space-y-1';
@@ -307,6 +309,25 @@
                     input.addEventListener('change', updateDateSummary);
                     input.addEventListener('input', updateDateSummary);
                     absenceDates.appendChild(label);
+
+                    const reasonLabel = document.createElement('label');
+                    reasonLabel.className = 'block space-y-1';
+                    const options = Object.entries(reasonOptions)
+                        .map(([value, label]) => `<option value="${value}">${label}</option>`)
+                        .join('');
+                    reasonLabel.innerHTML = `<span class="text-base font-medium text-zinc-600 dark:text-zinc-300">Cause for Date ${index + 1}</span><select name="details[absence_reasons][]" required class="w-full rounded-lg border-zinc-300 bg-white px-3 py-3 text-base shadow-sm focus:border-green-700 focus:ring-green-700 dark:border-green-700 dark:bg-zinc-800 dark:text-zinc-100"><option value="">Choose a cause</option>${options}</select><input type="text" name="details[absence_other_reasons][]" data-other-reason class="mt-2 hidden w-full rounded-lg border-zinc-300 bg-white px-3 py-3 text-base shadow-sm focus:border-green-700 focus:ring-green-700 dark:border-green-700 dark:bg-zinc-800 dark:text-zinc-100" placeholder="Specify the other cause">`;
+                    const reasonSelect = reasonLabel.querySelector('select');
+                    const otherReasonInput = reasonLabel.querySelector('[data-other-reason]');
+                    reasonSelect.value = reasons[index] || '';
+                    otherReasonInput.value = otherReasons[index] || '';
+                    const updateOtherReason = () => {
+                        const isOther = reasonSelect.value === 'other';
+                        otherReasonInput.classList.toggle('hidden', !isOther);
+                        otherReasonInput.required = isOther;
+                    };
+                    reasonSelect.addEventListener('change', updateOtherReason);
+                    updateOtherReason();
+                    document.getElementById('absence_reasons').appendChild(reasonLabel);
                 }
                 updateDateSummary();
             };

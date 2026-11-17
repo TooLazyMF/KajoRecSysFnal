@@ -3,6 +3,7 @@
 namespace Tests\Feature\Settings;
 
 use App\Models\User;
+use App\Models\SlipAssignment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -16,6 +17,27 @@ class ProfileUpdateTest extends TestCase
         $this->actingAs($user = User::factory()->create());
 
         $this->get(route('profile.edit'))->assertOk();
+    }
+
+    public function test_student_profile_has_a_client_information_form_editor(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+
+        $this->actingAs($student)
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertSee('Client Information Form')
+            ->assertSee('Edit CIF');
+
+        $this->actingAs($student)
+            ->get(route('profile.client-information.edit'))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('slip_assignments', [
+            'assigned_by' => $student->id,
+            'student_id' => $student->id,
+            'slip' => 'qf-bo-oss-04-client-information-form',
+        ]);
     }
 
     public function test_profile_information_can_be_updated(): void

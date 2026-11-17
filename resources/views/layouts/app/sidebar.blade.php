@@ -1,5 +1,5 @@
 @php
-    $systemTheme = request()->routeIs('dashboard', 'student.dashboard', 'teacher.dashboard', 'teacher.students', 'guidance.dashboard', 'guidance.records.*', 'guidance.cif.*', 'admin.users.*', 'slip-history.*', 'assigned-slips.*');
+    $systemTheme = request()->routeIs('dashboard', 'student.dashboard', 'teacher.dashboard', 'teacher.students', 'guidance.dashboard', 'guidance.records.*', 'guidance.cif.*', 'admin.users.*', 'guidance.slip-review', 'slip-history.*', 'assigned-slips.*');
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @if ($systemTheme) data-system-theme @else class="dark" @endif>
@@ -25,9 +25,10 @@
                 'guidance_counselor' => 'guidance.dashboard',
                 default => 'dashboard',
             };
+            $unreadNotificationsCount = auth()->user()->unreadNotifications()->count();
         @endphp
 
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
+        <flux:sidebar sticky collapsible="mobile" class="kajorec-sidebar border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" :href="route($dashboardRoute)" wire:navigate />
                 <flux:sidebar.collapse class="lg:hidden" />
@@ -47,6 +48,14 @@
                             'guidance_counselor' => __('Guidance Dashboard'),
                             default => __('Dashboard'),
                         } }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item
+                        icon="bell"
+                        :href="route('notifications.index')"
+                        :current="request()->routeIs('notifications.*')"
+                        wire:navigate
+                    >
+                        {{ __('Notifications') }}@if ($unreadNotificationsCount) ({{ $unreadNotificationsCount }}) @endif
                     </flux:sidebar.item>
 
                     @if ($role === 'teacher')
@@ -126,6 +135,14 @@
                             {{ __('Received Referrals') }}
                         </flux:sidebar.item>
                         <flux:sidebar.item
+                            icon="clipboard-document-check"
+                            :href="route('guidance.slip-review')"
+                            :current="request()->routeIs('guidance.slip-review')"
+                            wire:navigate
+                        >
+                            {{ __('Slip Approvals') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item
                             icon="archive-box"
                             :href="route('guidance.students-records')"
                             :current="request()->routeIs('guidance.students-records') || request()->routeIs('guidance.records.*') || request()->routeIs('guidance.cif.*')"
@@ -147,6 +164,25 @@
                         >
                             {{ __('Import Students File') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item
+                            as="button"
+                            type="button"
+                            icon="circle-stack"
+                            onclick="document.getElementById('data-backup-modal').showModal()"
+                        >
+                            {{ __('Data Backup Or Restore') }}
+                        </flux:sidebar.item>
+                        @if (request()->routeIs('guidance.dashboard'))
+                            <flux:sidebar.item
+                                as="button"
+                                type="button"
+                                icon="document-chart-bar"
+                                class="sm:hidden"
+                                onclick="document.getElementById('monthly-report-modal').showModal()"
+                            >
+                                {{ __('Generate monthly report') }}
+                            </flux:sidebar.item>
+                        @endif
                     @endif
                 </flux:sidebar.group>
             </flux:sidebar.nav>
@@ -156,8 +192,85 @@
             <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
         </flux:sidebar>
 
+        <dialog
+            id="data-backup-modal"
+            aria-labelledby="data-backup-title"
+            class="m-auto max-h-[90vh] w-[min(94vw,36rem)] overflow-y-auto rounded-2xl bg-white p-0 text-zinc-900 shadow-2xl backdrop:bg-zinc-950/50 dark:bg-zinc-900 dark:text-zinc-100"
+        >
+            <div class="space-y-5 p-6 sm:p-8">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h2 id="data-backup-title" class="text-xl font-semibold">{{ __('Data Backup Or Restore') }}</h2>
+                        <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                            {{ __('Back up KajoRec records or merge a backup from another KajoRec installation.') }}
+                        </p>
+                    </div>
+                    <form method="dialog">
+                        <button type="submit" class="rounded-lg px-2 py-1 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800" aria-label="{{ __('Close') }}">
+                            &times;
+                        </button>
+                    </form>
+                </div>
+
+                @if (session('backup_status'))
+                    <p role="status" class="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                        {{ session('backup_status') }}
+                    </p>
+                @endif
+
+                @error('backup_file')
+                    <p role="alert" class="rounded-xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-200">
+                        {{ $message }}
+                    </p>
+                @enderror
+
+                <section class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                    <h3 class="font-medium">{{ __('Back up your data') }}</h3>
+                    <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                        {{ __('Download a KajoRec archive containing accounts, guidance records, appointments, and their available attachments.') }}
+                    </p>
+                    <a
+                        href="{{ route('admin.data-backup.download') }}"
+                        class="mt-4 inline-flex items-center rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
+                    >
+                        {{ __('Download backup') }}
+                    </a>
+                </section>
+
+                <section class="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                    <h3 class="font-medium">{{ __('Import a data backup') }}</h3>
+                    <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                        {{ __('Only KajoRec-generated ZIP backups are accepted. Matching accounts use email or ID number; existing account details are kept and missing records are added.') }}
+                    </p>
+                    <form method="POST" action="{{ route('admin.data-backup.import') }}" enctype="multipart/form-data" class="mt-4 space-y-3">
+                        @csrf
+                        <label for="backup_file" class="block text-sm font-medium">{{ __('KajoRec backup file') }}</label>
+                        <input
+                            id="backup_file"
+                            name="backup_file"
+                            type="file"
+                            accept=".zip,application/zip"
+                            required
+                            class="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-2 file:font-medium dark:file:bg-zinc-800"
+                        >
+                        <button
+                            type="submit"
+                            class="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+                        >
+                            {{ __('Import and merge') }}
+                        </button>
+                    </form>
+                </section>
+            </div>
+        </dialog>
+
         <flux:header class="lg:hidden">
             <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
+            @if (request()->routeIs('guidance.dashboard'))
+                <flux:heading size="sm" class="min-w-0 flex-1 truncate sm:hidden">
+                    {{ __('Welcome to KAJOREC') }}
+                </flux:heading>
+            @endif
             <flux:spacer />
             <flux:dropdown position="top" align="end">
                 <flux:profile
@@ -207,12 +320,18 @@
 
         {{ $slot }}
 
+        @if ($errors->has('backup_file') || session('backup_status'))
+            <script>
+                document.getElementById('data-backup-modal')?.showModal();
+            </script>
+        @endif
+
         <script>
             (() => {
                 const idleTimeout = 10 * 60 * 1000;
                 const activityUrl = @json(route('account-activity.touch'));
                 const logoutUrl = @json(route('logout'));
-                const loginUrl = @json(route('login'));
+                const loginUrl = @json(route('home'));
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
                 let lastActivity = Date.now();
                 let lastSync = 0;
@@ -287,6 +406,7 @@
             </flux:toast.group>
         @endpersist
 
+        @include('partials.password-match-checker')
         @fluxScripts
     </body>
 </html>

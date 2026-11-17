@@ -62,7 +62,6 @@
                                         @if (!$admission)
                                             <span class="text-gray-500 dark:text-zinc-400">Not issued</span>
                                         @elseif ($admission->status === 'approved')
-                                            <span class="font-semibold text-green-700 dark:text-green-300">Processed / Approved</span>
                                             @if ($admission->slipSubmission)
                                                 @include('teacher.partials.submission-preview-modal', ['submission' => $admission->slipSubmission])
                                             @endif

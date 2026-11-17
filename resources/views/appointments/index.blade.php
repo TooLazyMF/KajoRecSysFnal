@@ -20,6 +20,12 @@
                 </div>
             @endif
 
+            @if ($errors->any())
+                <div role="alert" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 shadow-sm dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
+                    {{ $errors->first() }}
+                </div>
+            @endif
+
             @if (auth()->user()->role !== 'guidance_counselor')
                 <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
                     <div class="flex items-start gap-4">
@@ -27,7 +33,7 @@
                         <div>
                             <h2 class="text-xl font-bold">Request an appointment</h2>
                     <p class="mt-1 text-sm text-gray-500 dark:text-zinc-400">
-                        Tell us what kind of appointment you need. The Guidance Office will review your request and set the date and time.
+                        Tell us what kind of appointment you need and suggest a vacant date and time that works for you. The Guidance Office will confirm or adjust it.
                     </p>
                         </div>
                     </div>
@@ -51,6 +57,26 @@
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <label for="requested_date" class="mb-2 block text-sm font-semibold">Suggested date</label>
+                                <input id="requested_date" name="scheduled_date" type="date" min="{{ now()->format('Y-m-d') }}" value="{{ old('scheduled_date') }}" required class="w-full rounded-xl border-gray-300 bg-gray-50 px-4 py-3 text-sm shadow-sm focus:border-green-600 focus:ring-green-600 dark:border-zinc-700 dark:bg-zinc-800">
+                                @error('scheduled_date')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                            </div>
+                            <div>
+                                <label for="requested_time" class="mb-2 block text-sm font-semibold">Suggested time</label>
+                                <div class="mb-2 flex gap-2" role="group" aria-label="Choose morning or afternoon">
+                                    <button type="button" data-appointment-period="AM" class="rounded-lg border px-4 py-2 text-sm font-semibold transition" aria-pressed="false">AM</button>
+                                    <button type="button" data-appointment-period="PM" class="rounded-lg border px-4 py-2 text-sm font-semibold transition" aria-pressed="false">PM</button>
+                                </div>
+                                <select id="requested_time" name="scheduled_time" required class="w-full rounded-xl border-gray-300 bg-gray-50 px-4 py-3 text-sm shadow-sm focus:border-green-600 focus:ring-green-600 dark:border-zinc-700 dark:bg-zinc-800">
+                                    <option value="" disabled selected>Select a time</option>
+                                </select>
+                                @error('scheduled_time')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                            </div>
+                        </div>
+                        <p id="requested-availability-message" role="status" class="text-sm text-amber-700 dark:text-amber-300" aria-live="polite"></p>
+                        <p class="text-xs text-gray-500 dark:text-zinc-400">AM appointments are available from 8:00 AM to 11:00 AM; PM appointments are available from 1:00 PM to 5:00 PM. This is your preferred time, not a confirmed schedule. The Guidance Office will check availability before accepting.</p>
                         <button type="submit" class="inline-flex items-center rounded-xl bg-green-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 dark:bg-green-600 dark:hover:bg-green-500">
                             Send appointment request
                         </button>
@@ -76,9 +102,55 @@
                         {{ auth()->user()->role === 'guidance_counselor' ? 'There are no appointment requests yet.' : 'You have not requested an appointment yet.' }}
                     </p>
                 @else
+                    @php
+                        $isGuidanceCounselor = auth()->user()->role === 'guidance_counselor';
+                        $appointmentGroups = $isGuidanceCounselor
+                            ? $appointments->groupBy('user_id')
+                            : collect([$appointments]);
+                    @endphp
                     <ul class="mt-6 space-y-4">
-                        @foreach ($appointments as $appointment)
-                            <li class="rounded-xl border border-gray-200 p-5 transition hover:border-green-300 hover:shadow-sm dark:border-zinc-800 dark:hover:border-green-800 sm:p-6">
+                        @foreach ($appointmentGroups as $studentAppointments)
+                            @if ($isGuidanceCounselor)
+                                @php
+                                    $student = $studentAppointments->first()->requester;
+                                @endphp
+                                <li class="overflow-hidden rounded-xl border border-gray-200 dark:border-zinc-800">
+                                    <details data-student-appointment-group="{{ $student->id }}">
+                                        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 p-5 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-green-500 dark:hover:bg-zinc-800 sm:p-6">
+                                            <span class="min-w-0">
+                                                <span class="block truncate text-base font-bold">{{ $student->name }}</span>
+                                                <span class="mt-1 block text-sm text-gray-500 dark:text-zinc-400">{{ $student->id_number }} · {{ $studentAppointments->count() }} {{ Str::plural('appointment request', $studentAppointments->count()) }}</span>
+                                            </span>
+                                            <span class="shrink-0 text-sm font-semibold text-green-700 dark:text-green-400">View requests</span>
+                                        </summary>
+                                        <ul class="space-y-4 border-t border-gray-200 p-4 dark:border-zinc-800 sm:p-5">
+                            @endif
+                            @foreach ($studentAppointments as $appointment)
+                            <li @class([
+                                'rounded-xl border border-gray-200 transition dark:border-zinc-800' => auth()->user()->role === 'guidance_counselor',
+                                'rounded-xl border border-gray-200 p-5 transition hover:border-green-300 hover:shadow-sm dark:border-zinc-800 dark:hover:border-green-800 sm:p-6' => auth()->user()->role !== 'guidance_counselor',
+                            ])>
+                                @if (auth()->user()->role === 'guidance_counselor')
+                                    <button
+                                        type="button"
+                                        aria-haspopup="dialog"
+                                        aria-controls="appointment-details-{{ $appointment->id }}"
+                                        onclick="document.getElementById('appointment-details-{{ $appointment->id }}').showModal()"
+                                        class="w-full rounded-xl p-5 text-left transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-green-500 dark:hover:bg-zinc-800 sm:p-6"
+                                    >
+                                        <span class="block text-base font-bold">{{ $appointment->requester->name }}</span>
+                                        <span class="mt-1 block line-clamp-2 whitespace-pre-line text-sm text-gray-600 dark:text-zinc-300">{{ $appointment->concerns ?: $appointment->purpose }}</span>
+                                    </button>
+                                    <dialog id="appointment-details-{{ $appointment->id }}" class="max-h-[90vh] w-[min(72rem,calc(100%-2rem))] max-w-none overflow-y-auto rounded-2xl border border-gray-200 bg-white p-0 shadow-2xl backdrop:bg-black/50 dark:border-zinc-700 dark:bg-zinc-900">
+                                        <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-zinc-700">
+                                            <div>
+                                                <h2 class="text-lg font-bold">{{ $appointment->requester->name }} — Appointment Details</h2>
+                                                <p class="mt-1 text-sm text-gray-500 dark:text-zinc-400">{{ ucfirst($appointment->requester->role) }} · {{ $appointment->requester->id_number }}</p>
+                                            </div>
+                                            <button type="button" onclick="this.closest('dialog').close()" class="text-3xl leading-none text-gray-400 hover:text-gray-700 dark:hover:text-zinc-100" aria-label="Close appointment details">&times;</button>
+                                        </div>
+                                        <div class="p-5">
+                                @endif
                                 <div class="flex flex-wrap items-start justify-between gap-4">
                                     <div class="min-w-0 flex-1">
                                         @if (!(auth()->user()->role === 'guidance_counselor' && in_array($appointment->status, ['pending', 'reschedule_requested'], true)))
@@ -90,7 +162,7 @@
                                         @endif
                                         @if ($appointment->scheduled_at)
                                             <p class="mt-3 inline-flex rounded-lg bg-green-50 px-3 py-1.5 text-sm font-semibold text-green-800 dark:bg-green-950/40 dark:text-green-300">
-                                                Scheduled for {{ $appointment->scheduled_at->format('M j, Y g:i A') }}
+                                                {{ in_array($appointment->status, ['pending', 'pending_confirmation', 'reschedule_requested'], true) ? 'Proposed for' : 'Scheduled for' }} {{ $appointment->scheduled_at->format('M j, Y g:i A') }}
                                                 @if ($appointment->duration_minutes)
                                                     – {{ $appointment->scheduled_at->copy()->addMinutes($appointment->duration_minutes)->format('g:i A') }}
                                                 @endif
@@ -138,24 +210,73 @@
                                     </div>
                                     <span @class([
                                         'rounded-full px-3 py-1.5 text-xs font-bold capitalize',
-                                        'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300' => in_array($appointment->status, ['pending', 'reschedule_requested'], true),
+                                        'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300' => in_array($appointment->status, ['pending', 'pending_confirmation', 'reschedule_requested'], true),
                                         'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300' => $appointment->status === 'accepted',
                                         'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300' => $appointment->status === 'done',
                                         'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300' => $appointment->status === 'missed',
                                         'bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300' => $appointment->status === 'declined',
                                     ])>
-                                        {{ $appointment->status === 'reschedule_requested' ? 'Re-appointment requested' : ($appointment->status === 'missed' ? 'Client failed to attend' : $appointment->status) }}
+                                        {{ $appointment->status === 'pending_confirmation' ? 'Awaiting your confirmation' : ($appointment->status === 'reschedule_requested' ? 'Re-appointment requested' : ($appointment->status === 'missed' ? 'Client failed to attend' : str($appointment->status)->replace('_', ' ')->title())) }}
                                     </span>
                                 </div>
 
+                                @if (auth()->user()->role === 'student' && $appointment->referral_id && $appointment->status === 'pending_confirmation')
+                                    <section class="mt-5 space-y-4 rounded-xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-900 dark:bg-blue-950/20">
+                                        <div>
+                                            <h3 class="font-semibold text-blue-950 dark:text-blue-200">Counseling appointment proposal</h3>
+                                            <p class="mt-1 text-sm text-blue-900 dark:text-blue-200">Confirm the proposed time or suggest a different available date and time. Class Admission will remain on hold until counseling is completed.</p>
+                                        </div>
+                                        <form method="POST" action="{{ route('appointments.referral.confirm', $appointment) }}">
+                                            @csrf
+                                            <button type="submit" class="rounded-lg bg-green-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-800">Confirm this appointment</button>
+                                        </form>
+                                        <form method="POST" action="{{ route('appointments.referral.suggest', $appointment) }}" data-appointment-availability-date="referral-suggest-date-{{ $appointment->id }}" data-appointment-availability-time="referral-suggest-time-{{ $appointment->id }}" data-appointment-availability-duration="60" data-appointment-availability-exclude-id="{{ $appointment->id }}" class="space-y-3 border-t border-blue-200 pt-4 dark:border-blue-900">
+                                            @csrf
+                                            <h4 class="text-sm font-semibold">Suggest another available time</h4>
+                                            <div class="grid gap-3 sm:grid-cols-2">
+                                                <div>
+                                                    <label for="referral-suggest-date-{{ $appointment->id }}" class="block text-xs font-semibold">Available date</label>
+                                                    <input id="referral-suggest-date-{{ $appointment->id }}" name="scheduled_date" type="date" min="{{ now()->format('Y-m-d') }}" required class="mt-1 w-full rounded-lg border-blue-200 bg-white p-2.5 text-sm dark:border-blue-800 dark:bg-zinc-800">
+                                                    @error('scheduled_date')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                                                </div>
+                                                <div>
+                                                    <label for="referral-suggest-time-{{ $appointment->id }}" class="block text-xs font-semibold">Available time</label>
+                                                    <input id="referral-suggest-time-{{ $appointment->id }}" name="scheduled_time" type="time" step="600" required class="mt-1 w-full rounded-lg border-blue-200 bg-white p-2.5 text-sm dark:border-blue-800 dark:bg-zinc-800">
+                                                    @error('scheduled_time')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                                                </div>
+                                            </div>
+                                            <p data-appointment-availability-feedback role="status" class="text-sm text-red-600 dark:text-red-400" aria-live="polite"></p>
+                                            <div>
+                                                <label for="referral-suggest-reason-{{ $appointment->id }}" class="block text-xs font-semibold">Note for Guidance</label>
+                                                <textarea id="referral-suggest-reason-{{ $appointment->id }}" name="reschedule_reason" rows="2" maxlength="2000" required class="mt-1 w-full rounded-lg border-blue-200 bg-white p-2.5 text-sm dark:border-blue-800 dark:bg-zinc-800" placeholder="Share any scheduling details."></textarea>
+                                                @error('reschedule_reason')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                                            </div>
+                                            <button type="submit" class="rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800">Send my available time</button>
+                                        </form>
+                                    </section>
+                                @endif
+
                                 @if (auth()->user()->role === 'student' && in_array($appointment->status, ['accepted', 'declined'], true))
-                                    <form method="POST" action="{{ route('appointments.reappoint', $appointment) }}" class="mt-5 rounded-xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-900 dark:bg-blue-950/20">
+                                    <form method="POST" action="{{ route('appointments.reappoint', $appointment) }}" data-appointment-availability-date="reappoint_date_{{ $appointment->id }}" data-appointment-availability-time="reappoint_time_{{ $appointment->id }}" data-appointment-availability-duration="60" data-appointment-availability-exclude-id="{{ $appointment->id }}" class="mt-5 rounded-xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-900 dark:bg-blue-950/20">
                                         @csrf
                                         <label for="reschedule_reason_{{ $appointment->id }}" class="block text-sm font-semibold text-blue-950 dark:text-blue-200">Need a different appointment time?</label>
                                         <textarea id="reschedule_reason_{{ $appointment->id }}" name="reschedule_reason" rows="2" maxlength="2000" required class="mt-2 w-full rounded-lg border-blue-200 bg-white p-3 text-sm leading-6 dark:border-blue-800 dark:bg-zinc-800" placeholder="Tell the counselor why you need to re-appoint.">{{ old('reschedule_reason') }}</textarea>
                                         @error('reschedule_reason')
                                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                         @enderror
+                                        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                                            <div>
+                                                <label for="reappoint_date_{{ $appointment->id }}" class="block text-xs font-semibold text-blue-950 dark:text-blue-200">Suggested date <span class="font-normal">(optional)</span></label>
+                                                <input id="reappoint_date_{{ $appointment->id }}" name="scheduled_date" type="date" min="{{ now()->format('Y-m-d') }}" value="{{ old('scheduled_date') }}" class="mt-1 w-full rounded-lg border-blue-200 bg-white p-2.5 text-sm dark:border-blue-800 dark:bg-zinc-800">
+                                            </div>
+                                            <div>
+                                                <label for="reappoint_time_{{ $appointment->id }}" class="block text-xs font-semibold text-blue-950 dark:text-blue-200">Suggested time <span class="font-normal">(optional)</span></label>
+                                                <input id="reappoint_time_{{ $appointment->id }}" name="scheduled_time" type="time" step="600" value="{{ old('scheduled_time') }}" class="mt-1 w-full rounded-lg border-blue-200 bg-white p-2.5 text-sm dark:border-blue-800 dark:bg-zinc-800">
+                                            </div>
+                                        </div>
+                                        @error('scheduled_date')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                                        @error('scheduled_time')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                                        <p data-appointment-availability-feedback role="status" class="text-sm text-red-600 dark:text-red-400" aria-live="polite"></p>
                                         <button type="submit" class="mt-3 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800">Re-appoint</button>
                                     </form>
                                 @endif
@@ -181,7 +302,7 @@
                                                 <p class="text-xs font-bold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Appointment details</p>
                                                 <p class="mt-3 whitespace-pre-line text-sm leading-7 text-neutral-700 dark:text-neutral-200">{{ $appointment->purpose }}</p>
                                             </div>
-                                            <form id="accept-appointment-{{ $appointment->id }}" method="POST" action="{{ route('appointments.accept', $appointment) }}" class="space-y-4">
+                                            <form id="accept-appointment-{{ $appointment->id }}" data-appointment-schedule-id="{{ $appointment->id }}" method="POST" action="{{ route('appointments.accept', $appointment) }}" class="space-y-4">
                                             @csrf
                                                 <label for="guidance_message_{{ $appointment->id }}" class="block text-sm font-semibold">Notes <span class="font-normal text-neutral-500">(optional)</span></label>
                                                 <textarea
@@ -210,18 +331,24 @@
                                             <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Set the appointment schedule.</p>
                                             </div>
                                             <div class="space-y-5 p-6">
+                                                @if ($appointment->scheduled_at && in_array($appointment->status, ['pending', 'reschedule_requested'], true))
+                                                    <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
+                                                        <span class="font-semibold">Student suggestion:</span>
+                                                        {{ $appointment->scheduled_at->format('M j, Y g:i A') }}
+                                                    </div>
+                                                @endif
                                                 <div>
                                                     <label for="scheduled_date_{{ $appointment->id }}" class="mb-2 block text-sm font-semibold">Appointment date</label>
-                                                    <input id="scheduled_date_{{ $appointment->id }}" name="scheduled_date" form="accept-appointment-{{ $appointment->id }}" type="date" min="{{ now()->format('Y-m-d') }}" value="{{ old('scheduled_date') }}" required class="block w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-3 text-sm shadow-sm focus:border-blue-600 focus:ring-blue-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" />
+                                                    <input id="scheduled_date_{{ $appointment->id }}" name="scheduled_date" form="accept-appointment-{{ $appointment->id }}" type="date" min="{{ now()->format('Y-m-d') }}" value="{{ old('scheduled_date', $appointment->scheduled_at?->format('Y-m-d')) }}" required class="block w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-3 text-sm shadow-sm focus:border-blue-600 focus:ring-blue-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100" />
                                                     @error('scheduled_date') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                                                     <p class="mt-3 text-xs leading-5 text-blue-800/70 dark:text-blue-200/70">Choose the appointment date.</p>
                                                 </div>
                                                 <div>
                                                     <label for="scheduled_time_{{ $appointment->id }}" class="mb-2 block text-sm font-semibold">Appointment time</label>
                                                     <select id="scheduled_time_{{ $appointment->id }}" name="scheduled_time" form="accept-appointment-{{ $appointment->id }}" required class="block max-h-64 w-full rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-3 text-sm shadow-sm focus:border-blue-600 focus:ring-blue-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">
-                                                        <option value="" disabled @selected(! old('scheduled_time'))>Select a time</option>
+                                                        <option value="" disabled @selected(! old('scheduled_time') && ! $appointment->scheduled_at)>Select a time</option>
                                                         @foreach ($appointmentTimeSlots as $timeSlot)
-                                                            <option value="{{ $timeSlot['value'] }}" @selected(old('scheduled_time') === $timeSlot['value'])>{{ $timeSlot['label'] }}</option>
+                                                            <option value="{{ $timeSlot['value'] }}" @selected(old('scheduled_time', $appointment->scheduled_at?->format('H:i')) === $timeSlot['value'])>{{ $timeSlot['label'] }}</option>
                                                         @endforeach
                                                     </select>
                                                     @error('scheduled_time') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
@@ -288,11 +415,201 @@
                                         <button type="submit" class="mt-4 rounded-xl bg-green-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-green-800 dark:bg-green-600 dark:hover:bg-green-500">Mark appointment as done</button>
                                     </form>
                                 @endif
+                                @if (auth()->user()->role === 'guidance_counselor')
+                                        </div>
+                                    </dialog>
+                                @endif
                             </li>
+                            @endforeach
+                            @if ($isGuidanceCounselor)
+                                        </ul>
+                                    </details>
+                                </li>
+                            @endif
                         @endforeach
                     </ul>
                 @endif
             </section>
         </div>
     </main>
+    <script>
+        (() => {
+            const appointmentReservations = @js($appointmentReservations);
+            const dailyAppointmentLimit = @js(\App\Services\AppointmentAvailability::DAILY_LIMIT);
+            const minutesFromTime = (time) => {
+                const [hours, minutes] = time.split(':').map(Number);
+                return hours * 60 + minutes;
+            };
+            const availabilityFor = (date, time, duration, ignoredAppointmentId) => {
+                if (!date || !time) return { available: true };
+
+                const reservations = appointmentReservations.filter((reservation) =>
+                    reservation.date === date
+                    && String(reservation.id) !== String(ignoredAppointmentId ?? '')
+                );
+
+                if (reservations.length >= dailyAppointmentLimit) {
+                    return { available: false, reason: 'daily-limit' };
+                }
+
+                const start = minutesFromTime(time);
+                const end = start + duration;
+                const overlaps = reservations.some((reservation) => {
+                    const reservedStart = minutesFromTime(reservation.time);
+                    const reservedEnd = reservedStart + reservation.duration;
+
+                    return start < reservedEnd && end > reservedStart;
+                });
+
+                return overlaps
+                    ? { available: false, reason: 'time-conflict' }
+                    : { available: true };
+            };
+
+            const dateInput = document.getElementById('requested_date');
+            const timeSelect = document.getElementById('requested_time');
+            if (dateInput && timeSelect) {
+                const periodButtons = document.querySelectorAll('[data-appointment-period]');
+                const availabilityMessage = document.getElementById('requested-availability-message');
+                const choices = {
+                    AM: [
+                        { value: '08:00', label: '8:00 AM' },
+                        { value: '09:00', label: '9:00 AM' },
+                        { value: '10:00', label: '10:00 AM' },
+                        { value: '11:00', label: '11:00 AM' },
+                    ],
+                    PM: [
+                        { value: '13:00', label: '1:00 PM' },
+                        { value: '14:00', label: '2:00 PM' },
+                        { value: '15:00', label: '3:00 PM' },
+                        { value: '16:00', label: '4:00 PM' },
+                        { value: '17:00', label: '5:00 PM' },
+                    ],
+                };
+                const previousTime = @js(old('scheduled_time', ''));
+                let selectedPeriod = previousTime && Number(previousTime.slice(0, 2)) >= 12 ? 'PM' : 'AM';
+                let preferredTime = previousTime;
+
+                const renderTimes = () => {
+                    const currentTime = timeSelect.value || preferredTime;
+                    const reservations = appointmentReservations.filter((reservation) => reservation.date === dateInput.value);
+                    const dayIsFull = reservations.length >= dailyAppointmentLimit;
+                    let availableCount = 0;
+                    timeSelect.replaceChildren(new Option('Select a time', ''));
+
+                    choices[selectedPeriod].forEach(({ value, label }) => {
+                        const option = new Option(label, value);
+                        const availability = availabilityFor(dateInput.value, value, 60);
+                        option.disabled = !availability.available;
+                        if (!option.disabled) availableCount += 1;
+                        if (availability.reason === 'daily-limit') {
+                            option.textContent = `${label} — daily limit reached`;
+                        } else if (availability.reason === 'time-conflict') {
+                            option.textContent = `${label} — unavailable`;
+                        }
+
+                        timeSelect.add(option);
+
+                        if (value === currentTime && !option.disabled) {
+                            timeSelect.value = value;
+                        }
+                    });
+
+                    if (availabilityMessage) {
+                        availabilityMessage.textContent = dayIsFull
+                            ? 'The Guidance Office has reached its limit of five appointments for this date. Please choose another date.'
+                            : (availableCount === 0 && dateInput.value
+                                ? 'There are no available times for this date. Please choose another date.'
+                                : '');
+                    }
+
+                    preferredTime = '';
+                    periodButtons.forEach((button) => {
+                        const active = button.dataset.appointmentPeriod === selectedPeriod;
+                        button.setAttribute('aria-pressed', String(active));
+                        button.classList.toggle('border-green-700', active);
+                        button.classList.toggle('bg-green-700', active);
+                        button.classList.toggle('text-white', active);
+                        button.classList.toggle('text-gray-700', !active);
+                        button.classList.toggle('dark:border-green-500', active);
+                        button.classList.toggle('dark:bg-green-600', active);
+                        button.classList.toggle('dark:text-zinc-100', active);
+                        button.classList.toggle('dark:text-zinc-300', !active);
+                    });
+                };
+
+                periodButtons.forEach((button) => {
+                    button.addEventListener('click', () => {
+                        selectedPeriod = button.dataset.appointmentPeriod;
+                        renderTimes();
+                    });
+                });
+                dateInput.addEventListener('change', renderTimes);
+                renderTimes();
+            }
+
+            document.querySelectorAll('[data-appointment-schedule-id]').forEach((form) => {
+                const appointmentId = form.dataset.appointmentScheduleId;
+                const scheduleDate = document.getElementById(`scheduled_date_${appointmentId}`);
+                const scheduleTime = document.getElementById(`scheduled_time_${appointmentId}`);
+                const duration = document.getElementById(`duration_minutes_${appointmentId}`);
+                if (!scheduleDate || !scheduleTime || !duration) return;
+
+                const updateAvailableTimes = () => {
+                    Array.from(scheduleTime.options).forEach((option) => {
+                        if (!option.value) return;
+                        if (!option.dataset.originalLabel) option.dataset.originalLabel = option.textContent;
+
+                        const availability = availabilityFor(
+                            scheduleDate.value,
+                            option.value,
+                            Number(duration.value) || 60,
+                            appointmentId,
+                        );
+                        option.disabled = !availability.available;
+                        option.textContent = availability.available
+                            ? option.dataset.originalLabel
+                            : `${option.dataset.originalLabel} — ${availability.reason === 'daily-limit' ? 'daily limit reached' : 'unavailable'}`;
+                    });
+                };
+
+                scheduleDate.addEventListener('change', updateAvailableTimes);
+                scheduleTime.addEventListener('focus', updateAvailableTimes);
+                duration.addEventListener('change', updateAvailableTimes);
+                updateAvailableTimes();
+            });
+
+            document.querySelectorAll('[data-appointment-availability-date]').forEach((form) => {
+                const date = document.getElementById(form.dataset.appointmentAvailabilityDate);
+                const time = document.getElementById(form.dataset.appointmentAvailabilityTime);
+                const feedback = form.querySelector('[data-appointment-availability-feedback]');
+                if (!date || !time || !feedback) return;
+
+                const updateAvailability = () => {
+                    time.setCustomValidity('');
+                    feedback.textContent = '';
+                    if (!date.value || !time.value) return;
+
+                    const availability = availabilityFor(
+                        date.value,
+                        time.value,
+                        Number(form.dataset.appointmentAvailabilityDuration) || 60,
+                        form.dataset.appointmentAvailabilityExcludeId,
+                    );
+
+                    if (!availability.available) {
+                        const message = availability.reason === 'daily-limit'
+                            ? 'The Guidance Office already has five appointments on this date. Please choose another date.'
+                            : 'This time overlaps another appointment. Please choose a different time.';
+                        time.setCustomValidity(message);
+                        feedback.textContent = message;
+                    }
+                };
+
+                date.addEventListener('change', updateAvailability);
+                time.addEventListener('input', updateAvailability);
+                updateAvailability();
+            });
+        })();
+    </script>
 </x-layouts::app>

@@ -16,7 +16,7 @@ class TrackAccountSession
 
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->routeIs('login.store') && $request->isMethod('post')) {
+        if ($request->routeIs('login.store', 'login.root') && $request->isMethod('post')) {
             $this->logger->captureLoginLocation($request);
         }
 

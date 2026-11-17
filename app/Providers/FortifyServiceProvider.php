@@ -7,8 +7,8 @@ use App\Actions\Fortify\CreateNewUser;
 /* @end-chisel-registration */
 use App\Actions\Fortify\ResetUserPassword;
 use App\Http\Responses\LoginResponse;
-use App\Http\Responses\RegisterResponse;
 use App\Models\User;
+use App\Support\SensitiveLookup;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,7 +16,6 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
-use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
 use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
@@ -27,7 +26,6 @@ class FortifyServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(LoginResponseContract::class, LoginResponse::class);
-        $this->app->singleton(RegisterResponseContract::class, RegisterResponse::class);
     }
 
     /**
@@ -49,7 +47,25 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::authenticateUsing(function (Request $request): ?User {
             $credentials = $request->only(Fortify::username(), 'password');
             $provider = Auth::getProvider();
-            $user = $provider->retrieveByCredentials($credentials);
+            $username = trim((string) $request->input(Fortify::username()));
+            $user = filled($username)
+                ? User::query()
+                    ->where('email_lookup_hash', SensitiveLookup::hash('email', $username))
+                    ->first()
+                : null;
+
+            if (! $user instanceof User && filled($request->input(Fortify::username()))) {
+                $teacherMatches = User::query()
+                    ->where('role', 'teacher')
+                    ->where('name_lookup_hash', SensitiveLookup::hash('name', $username))
+                    ->first();
+
+                if ($teacherMatches instanceof User
+                    && $provider->validateCredentials($teacherMatches, $credentials)
+                    && $teacherMatches->is_active) {
+                    return $teacherMatches;
+                }
+            }
 
             if ($user instanceof User
                 && $provider->validateCredentials($user, $credentials)

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\EncryptedLookup;
 use App\Services\EmailOtpService;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -9,20 +10,24 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
  * @property string $name
- * @property string $email
+ * @property string|null $email
+ * @property string|null $id_number
+ * @property string|null $gender
  * @property bool $is_active
  * @property bool $is_graduated
+ * @property bool $must_change_password
  * @property Carbon|null $email_verified_at
  * @property string $password
  * @property string|null $two_factor_secret
@@ -33,7 +38,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $updated_at
  */
 #[Fillable(['name', 'id_number', 'gender', 'email', 'password'])]
-#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
+#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'email_lookup_hash', 'id_number_lookup_hash', 'name_lookup_hash'])]
 class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
@@ -47,11 +52,27 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     protected function casts(): array
     {
         return [
+            'name' => EncryptedLookup::class,
+            'email' => EncryptedLookup::class,
+            'id_number' => EncryptedLookup::class,
+            'gender' => 'encrypted',
+            'two_factor_secret' => 'encrypted',
+            'two_factor_recovery_codes' => 'encrypted',
+            'remember_token' => 'encrypted',
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
             'is_graduated' => 'boolean',
+            'must_change_password' => 'boolean',
         ];
+    }
+
+    /**
+     * @return MorphMany<DatabaseNotification, $this>
+     */
+    public function notifications(): MorphMany
+    {
+        return $this->morphMany(DatabaseNotification::class, 'notifiable')->latest();
     }
 
     public function sendEmailVerificationNotification(): void
@@ -91,9 +112,9 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         return $this->hasMany(SlipSubmission::class);
     }
 
-    public function cnsRequests(): HasMany
+    public function slipInformations(): HasMany
     {
-        return $this->hasMany(CnsRequest::class);
+        return $this->hasMany(SlipInformation::class);
     }
 
     public function accountSessionLogs(): HasMany

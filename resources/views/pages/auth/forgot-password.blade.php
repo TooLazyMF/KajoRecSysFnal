@@ -18,8 +18,8 @@
             <form method="POST" action="{{ route('password.update') }}" class="flex flex-col gap-6">
                 @csrf
                 <flux:input name="otp" :label="__('6-digit code')" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code" />
-                <flux:input name="password" :label="__('New password')" type="password" required autocomplete="new-password" passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}" viewable />
-                <flux:input name="password_confirmation" :label="__('Confirm new password')" type="password" required autocomplete="new-password" passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}" viewable />
+                <flux:input name="password" :label="__('New password')" type="password" required minlength="8" pattern="(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]+" autocomplete="new-password" passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}" viewable />
+                <flux:input name="password_confirmation" :label="__('Confirm new password')" type="password" required minlength="8" pattern="(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]+" autocomplete="new-password" passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}" viewable />
                 <flux:button variant="primary" type="submit" class="w-full">{{ __('Reset password') }}</flux:button>
             </form>
 
@@ -49,7 +49,7 @@
 
         <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-400">
             <span>{{ __('Or, return to') }}</span>
-            <flux:link :href="route('login')" wire:navigate>{{ __('log in') }}</flux:link>
+            <flux:link :href="route('home')" wire:navigate>{{ __('log in') }}</flux:link>
         </div>
     </div>
 </x-layouts::auth>

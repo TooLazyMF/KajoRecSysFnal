@@ -25,17 +25,18 @@
 
                 <a
                     href="{{ url('/') }}"
-                    class="whitespace-nowrap text-sm font-medium text-gray-800 transition hover:text-[#176b3a]"
+                    class="whitespace-nowrap text-sm font-medium text-gray-800 transition hover:text-[#176b3a] lg:hidden"
                 >
                     Home
                 </a>
 
-                <a
-                    href="#about"
-                    class="whitespace-nowrap text-sm font-medium text-gray-800 transition hover:text-[#176b3a]"
+                <button
+                    type="button"
+                    data-show-panel="about"
+                    class="whitespace-nowrap border-0 bg-transparent p-0 text-sm font-medium text-gray-800 transition hover:text-[#176b3a]"
                 >
-                    About
-                </a>
+                    About Us
+                </button>
 
                 <button
                     type="button"

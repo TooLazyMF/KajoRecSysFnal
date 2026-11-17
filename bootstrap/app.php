@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\EnsureTeacherProfileComplete;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\TrackAccountSession;
 use Illuminate\Console\Scheduling\Schedule;
@@ -17,10 +18,14 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('account-sessions:close-idle')->everyMinute();
+        $schedule->command('appointments:notify-overdue')->everyMinute()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->redirectGuestsTo(fn () => route('home'));
+
         $middleware->web(append: [
             EnsureUserIsActive::class,
+            EnsureTeacherProfileComplete::class,
             TrackAccountSession::class,
         ]);
 

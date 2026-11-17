@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Concerns\PasswordValidationRules;
 use App\Models\User;
 use App\Notifications\PasswordResetOtp;
 use App\Services\EmailOtpService;
+use App\Support\SensitiveLookup;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,6 +18,8 @@ use Illuminate\Validation\Rules\Password;
 
 class PasswordResetOtpController extends Controller
 {
+    use PasswordValidationRules;
+
     public function send(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -32,7 +36,7 @@ class PasswordResetOtpController extends Controller
 
         RateLimiter::hit($rateLimitKey, 60);
         $user = User::query()
-            ->whereRaw('LOWER(email) = ?', [$email])
+            ->where('email_lookup_hash', SensitiveLookup::hash('email', $email))
             ->where('is_active', true)
             ->whereNotNull('email_verified_at')
             ->first();
@@ -65,7 +69,7 @@ class PasswordResetOtpController extends Controller
 
         $validated = $request->validate([
             'otp' => ['required', 'digits:6'],
-            'password' => ['required', 'string', 'confirmed', Password::defaults()],
+            'password' => $this->passwordRules(),
         ]);
         $reset = Cache::get($this->cacheKey($email));
 
@@ -77,7 +81,7 @@ class PasswordResetOtpController extends Controller
 
         $user = User::query()
             ->whereKey($reset['user_id'])
-            ->whereRaw('LOWER(email) = ?', [$email])
+            ->where('email_lookup_hash', SensitiveLookup::hash('email', $email))
             ->where('is_active', true)
             ->whereNotNull('email_verified_at')
             ->first();
@@ -98,7 +102,7 @@ class PasswordResetOtpController extends Controller
         RateLimiter::clear('password-reset-otp:'.hash('sha256', $email));
         event(new PasswordReset($user));
 
-        return to_route('login')->with('status', 'Your password has been reset. You can now log in.');
+        return to_route('home')->with('status', 'Your password has been reset. You can now log in.');
     }
 
     private function cacheKey(string $email): string

@@ -6,6 +6,8 @@ use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Models\User;
 use App\Models\StudentReference;
+use App\Rules\UniqueEncryptedLookup;
+use App\Support\SensitiveLookup;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -22,27 +24,45 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
+        return $this->createVerified($this->validate($input));
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    public function validate(array $input): array
+    {
+        $input['id_number'] = StudentReference::normalizeIdNumber($input['id_number'] ?? '');
+
         $validated = Validator::make($input, [
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'middle_initial' => ['nullable', 'string', 'max:10'],
             'name_extension' => ['nullable', 'string', 'max:20'],
             'email' => $this->emailRules(),
-            'id_number' => ['required', 'string', 'max:255', Rule::unique(User::class, 'id_number')],
+            'id_number' => ['required', 'string', 'max:255', new UniqueEncryptedLookup('users', 'id_number')],
             'gender' => ['required', Rule::in(['male', 'female'])],
             'password' => $this->passwordRules(),
+            'password_confirmation' => ['required', 'same:password'],
         ])->validate();
 
-        $reference = StudentReference::query()->where('id_number', trim($validated['id_number']))->first();
-        if (StudentReference::query()->exists() && (
-            $reference === null
-            || $this->normalizeName($reference->name) !== $this->normalizeName($this->registrationName($validated))
-            || $reference->gender !== $validated['gender']
-        )) {
-            throw ValidationException::withMessages([
-                'id_number' => 'Plese your valid credentials',
-            ]);
-        }
+        $this->validateStudentReference($validated);
+
+        return $validated;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    public function createVerified(array $validated): User
+    {
+        Validator::make($validated, [
+            'email' => $this->emailRules(),
+            'id_number' => ['required', 'string', 'max:255', new UniqueEncryptedLookup('users', 'id_number')],
+        ])->validate();
+
+        $this->validateStudentReference($validated);
 
         return User::create([
             'name' => implode(' ', array_filter([
@@ -51,11 +71,32 @@ class CreateNewUser implements CreatesNewUsers
                 trim($validated['last_name']),
                 filled($validated['name_extension'] ?? null) ? trim($validated['name_extension']) : null,
             ])),
-            'id_number' => $validated['id_number'],
+            'id_number' => StudentReference::normalizeIdNumber($validated['id_number']),
             'gender' => $validated['gender'],
             'email' => $validated['email'],
             'password' => $validated['password'],
-        ]);
+        ])->refresh();
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function validateStudentReference(array $validated): void
+    {
+        $normalizedIdNumber = StudentReference::normalizeIdNumber($validated['id_number'] ?? '');
+        $reference = StudentReference::query()
+            ->where('id_number_lookup_hash', SensitiveLookup::hash('id_number', $normalizedIdNumber))
+            ->first(['id_number', 'name', 'gender']);
+
+        if (StudentReference::query()->exists() && (
+            $reference === null
+            || $this->normalizeName($reference->name) !== $this->normalizeName($this->registrationName($validated))
+            || $reference->gender !== $validated['gender']
+        )) {
+            throw ValidationException::withMessages([
+                'id_number' => 'Please enter credentials that match the student reference.',
+            ]);
+        }
     }
 
     /** @param array<string, string|null> $input */

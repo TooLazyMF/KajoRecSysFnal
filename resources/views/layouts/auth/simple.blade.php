@@ -34,6 +34,7 @@
             </flux:toast.group>
         @endpersist
 
+        @include('partials.password-match-checker')
         @fluxScripts
     </body>
 </html>

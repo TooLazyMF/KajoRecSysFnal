@@ -15,22 +15,22 @@
         <x-passkey-verify />
         {{-- @end-chisel-passkeys --}}
 
-        <form id="login-form" method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-6">
+        <form id="login-form" method="POST" action="{{ route('login.root') }}" class="flex flex-col gap-6">
             @csrf
             <input type="hidden" name="login_latitude" id="login-latitude">
             <input type="hidden" name="login_longitude" id="login-longitude">
 
-            <!-- Email Address -->
+            <!-- Email or teacher name -->
             <flux:input
                 id="login-email"
                 name="email"
-                :label="__('Email address')"
+                :label="__('Email address or teacher name')"
                 :value="old('email')"
-                type="email"
+                type="text"
                 required
                 autofocus
-                autocomplete="email"
-                placeholder="email@example.com"
+                autocomplete="username"
+                placeholder="Email address or teacher name"
             />
 
             <!-- Password -->
@@ -80,6 +80,47 @@
             <flux:link :href="route('register')" wire:navigate>{{ __('Sign up') }}</flux:link>
         </div>
         {{-- @end-chisel-registration --}}
+        <section aria-labelledby="login-about-heading" class="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-300">
+            <h2 id="login-about-heading" class="font-semibold text-zinc-900 dark:text-zinc-100">About Us</h2>
+            <div class="mt-2 space-y-4">
+                <div>
+                    <h3 class="font-medium text-zinc-900 dark:text-zinc-100">What is KajoRec?</h3>
+                    <p class="mt-1">KajoRec is a web-based Guidance Office Record Management and Appointment System developed for Benguet State University – Bokod Campus. It is designed to help the Guidance Office manage student records, appointment requests, referrals, and guidance-related forms in an organized and accessible manner.</p>
+                    <p class="mt-1">By providing a centralized platform for managing guidance-related information, KajoRec aims to reduce manual recordkeeping, simplify appointment management, and support the efficient delivery of guidance services.</p>
+                </div>
+                <div>
+                    <h3 class="font-medium text-zinc-900 dark:text-zinc-100">Our Purpose</h3>
+                    <p class="mt-1">To provide the Guidance Office with a reliable and organized system for handling student records and managing guidance-related transactions while maintaining the confidentiality and security of student information.</p>
+                </div>
+                <div>
+                    <h3 class="font-medium text-zinc-900 dark:text-zinc-100">Our Goals</h3>
+                    <ul class="mt-1 list-disc space-y-1 ps-5">
+                        <li>Improve the organization and management of student records.</li>
+                        <li>Simplify appointment scheduling and management.</li>
+                        <li>Provide an organized way to record and manage referrals.</li>
+                        <li>Make guidance-related forms more accessible to authorized users.</li>
+                        <li>Support secure and efficient Guidance Office operations.</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-medium text-zinc-900 dark:text-zinc-100">Who Can Use KajoRec?</h3>
+                    <dl class="mt-1 space-y-2">
+                        <div>
+                            <dt class="font-medium text-zinc-800 dark:text-zinc-200">Guidance Counselors</dt>
+                            <dd>Manage student records, appointments, referrals, and guidance-related activities.</dd>
+                        </div>
+                        <div>
+                            <dt class="font-medium text-zinc-800 dark:text-zinc-200">Administrative Staff</dt>
+                            <dd>Assist in managing and organizing Guidance Office information.</dd>
+                        </div>
+                        <div>
+                            <dt class="font-medium text-zinc-800 dark:text-zinc-200">Students and Teachers</dt>
+                            <dd>Access available system services, submit appointment requests, referrals, and guidance-related forms according to their assigned roles.</dd>
+                        </div>
+                    </dl>
+                </div>
+            </div>
+        </section>
         <section aria-labelledby="login-contact-heading" class="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-300">
             <h2 id="login-contact-heading" class="font-semibold text-zinc-900 dark:text-zinc-100">Contact Us</h2>
             <p class="mt-1">We are the researchers behind KajoRec. For account or login assistance, email us at <a class="font-medium text-emerald-700 underline hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200" href="mailto:kajorec@gmail.com">kajorec@gmail.com</a>.</p>

@@ -25,11 +25,25 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'approved_by',
     'approved_at',
 ])]
-class CnsRequest extends Model
+class SlipInformation extends Model
 {
+    protected $table = 'slip_informations';
+
     protected function casts(): array
     {
         return [
+            'full_name' => 'encrypted',
+            'last_name' => 'encrypted',
+            'first_name' => 'encrypted',
+            'middle_initial' => 'encrypted',
+            'student_id' => 'encrypted',
+            'email' => 'encrypted',
+            'phone' => 'encrypted',
+            'degree' => 'encrypted',
+            'year_level' => 'encrypted',
+            'school_year' => 'encrypted',
+            'purpose' => 'encrypted',
+            'purpose_other' => 'encrypted',
             'approved_at' => 'datetime',
         ];
     }

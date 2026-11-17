@@ -1,8 +1,8 @@
 <x-layouts::app :title="__('Guidance Dashboard')">
     <main class="min-h-screen bg-[#f6f5f1] p-5 text-slate-900 dark:bg-[#111712] dark:text-zinc-100 sm:p-6 lg:p-8">
         <div class="mx-auto flex w-full max-w-7xl flex-col gap-6">
-            <div class="grid grid-cols-1 gap-[10px] sm:grid-cols-2 xl:grid-cols-5">
-                <header class="col-span-full rounded-2xl bg-[#09ba44] p-8 text-[#092010] shadow-lg dark:bg-[#20783e] dark:text-white">
+            <div class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+                <header class="col-span-full hidden rounded-2xl bg-[#09ba44] p-8 text-[#092010] shadow-lg dark:bg-[#20783e] dark:text-white sm:block">
                     <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                         <div>
                             <p class="text-sm font-medium opacity-80">Guidance Office</p>
@@ -12,7 +12,7 @@
                         <div class="text-left md:text-right">
                             <p class="text-sm opacity-80">{{ now()->format('l') }}</p>
                             <p class="text-xl font-semibold">{{ now()->format('F d, Y') }}</p>
-                            <button type="button" onclick="document.getElementById('monthly-report-modal').showModal()" class="mt-4 inline-flex items-center rounded-lg bg-white/90 px-4 py-2 text-sm font-semibold text-green-800 shadow-sm transition hover:bg-white dark:bg-zinc-900/90 dark:text-green-300 dark:hover:bg-zinc-900">
+                            <button type="button" onclick="document.getElementById('monthly-report-modal').showModal()" class="mt-4 hidden items-center rounded-lg bg-white/90 px-4 py-2 text-sm font-semibold text-green-800 shadow-sm transition hover:bg-white dark:bg-zinc-900/90 dark:text-green-300 dark:hover:bg-zinc-900 sm:inline-flex">
                                 Generate monthly report
                             </button>
                         </div>
@@ -43,19 +43,31 @@
                     ['Missed / Done', $missedDoneAppointmentsCount, 'Finished or missed', 'bg-orange-100', '✓', 'miss-done-appointments'],
                     ['Referrals Missing Document Details', $activeReferralsCount, 'Missing Document Code, Revision Number, or Control No.', 'bg-purple-100', '↗', 'active-referrals'],
                 ] as [$label, $count, $description, $iconBg, $icon, $modalKey])
-                    <button type="button" onclick="document.getElementById('{{ $modalKey }}-modal').showModal()" class="w-full rounded-2xl border p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-md {{ $statCardStyles[$loop->index] }} dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-green-700">
+                    <button type="button" onclick="document.getElementById('{{ $modalKey }}-modal').showModal()" class="min-w-0 w-full rounded-2xl border p-2 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-md sm:p-4 {{ $statCardStyles[$loop->index] }} dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-green-700">
                         <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-xs font-medium leading-4 text-neutral-500 dark:text-neutral-400">{{ $label }}</p>
-                                <p class="mt-1 text-2xl font-bold text-neutral-900 dark:text-white">{{ $count }}</p>
+                            <div class="min-w-0">
+                                <p class="break-words text-[10px] font-medium leading-3 text-neutral-500 dark:text-neutral-400 sm:text-xs sm:leading-4">{{ $label }}</p>
+                                <p class="mt-1 text-lg font-bold text-neutral-900 dark:text-white sm:text-2xl">{{ $count }}</p>
                             </div>
-                            <span class="flex h-10 w-10 items-center justify-center rounded-xl {{ $statIconStyles[$loop->index] }} text-lg font-semibold dark:bg-zinc-800 dark:text-emerald-300">{{ $icon }}</span>
+                            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg {{ $statIconStyles[$loop->index] }} text-sm font-semibold sm:h-10 sm:w-10 sm:rounded-xl sm:text-lg dark:bg-zinc-800 dark:text-emerald-300">{{ $icon }}</span>
                         </div>
-                        <p class="mt-2 text-[11px] leading-4 text-neutral-500">{{ $description }}</p>
+                        <p class="mt-2 hidden text-[11px] leading-4 text-neutral-500 sm:block">{{ $description }}</p>
                     </button>
                 @endforeach
             </section>
             </div>
+
+            <section class="flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm dark:border-emerald-900/60 dark:bg-emerald-950/20 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h2 class="font-semibold text-emerald-950 dark:text-emerald-100">Incoming Forms for Guidance</h2>
+                    <p class="mt-1 text-sm text-emerald-900/75 dark:text-emerald-200/75">
+                        {{ $guidanceInboxCount }} item{{ $guidanceInboxCount === 1 ? ' is' : 's are' }} in your inbox: student requests and submitted forms, including Class Admission results.
+                    </p>
+                </div>
+                <a href="{{ route('guidance.slip-review') }}" class="inline-flex shrink-0 items-center justify-center rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500">
+                    Open Slip Approvals
+                </a>
+            </section>
 
             <dialog id="monthly-report-modal" class="h-[90vh] w-[min(72rem,calc(100%-2rem))] max-w-none rounded-2xl border border-neutral-200 bg-white p-0 shadow-2xl backdrop:bg-black/50 dark:border-neutral-700 dark:bg-neutral-900">
                 <div class="flex h-full flex-col">
@@ -200,6 +212,19 @@
                                         @include('teacher.partials.referral-timeline', ['referral' => $referral])
                                     </div>
                                 </details>
+                                <form method="POST" action="{{ route('guidance.referrals.private-notes', $referral) }}" class="mt-4 border-t border-neutral-200 pt-4 dark:border-zinc-700">
+                                    @csrf
+                                    @method('PATCH')
+                                    <label for="guidance-notes-{{ $referral->id }}" class="mb-2 block text-sm font-semibold">Private Notes</label>
+                                    <textarea id="guidance-notes-{{ $referral->id }}" name="guidance_notes" rows="3" maxlength="2000" data-word-limit="50" placeholder="Add a private note about this referral (50 words max)" class="w-full rounded-lg border-neutral-300 bg-white p-3 text-sm text-neutral-900 shadow-sm focus:border-green-600 focus:ring-green-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100">{{ $referral->guidance_notes }}</textarea>
+                                    @error('guidance_notes')
+                                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                                    @enderror
+                                    <div class="mt-2 flex items-center justify-between gap-3">
+                                        <span class="text-xs text-neutral-500 dark:text-zinc-400"><span data-word-count>0</span>/50 words · Enter to save, Shift+Enter for a new line</span>
+                                        <button type="submit" class="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800">Save Private Note</button>
+                                    </div>
+                                </form>
                             </div>
                         @empty
                             <p class="py-3 text-sm text-neutral-500">There are no referrals missing document details or needing follow-up.</p>
@@ -240,6 +265,7 @@
                     </div>
                 </section>
 
+                <div class="space-y-4">
                 <section id="student-import" class="scroll-mt-6 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
                     <div>
                         <p class="text-xs font-bold uppercase tracking-wide text-green-700 dark:text-green-400">Registration reference</p>
@@ -262,6 +288,29 @@
                         <p class="mt-3 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                     @enderror
                 </section>
+                <section id="teacher-import" class="scroll-mt-6 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wide text-blue-700 dark:text-blue-400">Registration reference</p>
+                        <h2 class="mt-1 text-lg font-semibold">{{ $hasImportedTeacherFile ? 'Update the imported file' : 'Import teacher names file' }}</h2>
+                        <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
+                            Upload the complete Excel or CSV file with one teacher name per row. When a list is imported, teacher account names must match it. Replacing the list does not deactivate existing accounts.
+                        </p>
+                    </div>
+                    <form method="POST" action="{{ route('admin.teachers.import') }}" enctype="multipart/form-data" class="mt-5 space-y-4">
+                        @csrf
+                        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-200">
+                            Teacher names file
+                            <input type="file" name="teacher_file" accept=".xlsx,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain" required class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-600 dark:bg-neutral-800">
+                        </label>
+                        <button type="submit" class="w-full rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500">
+                            {{ $hasImportedTeacherFile ? 'Update teacher names file' : 'Import teacher names file' }}
+                        </button>
+                    </form>
+                    @error('teacher_file')
+                        <p class="mt-3 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </section>
+                </div>
             </div>
 
             <section class="rounded-2xl border border-amber-200 p-6 shadow-sm dark:border-amber-900/50 dark:bg-amber-950/20">
@@ -343,7 +392,7 @@
                                                     {{ $row['referral_pdf_ready'] ? 'Referral PDF ready' : 'Referral PDF locked until all four values are entered' }}
                                                 </p>
                                                 @if (! $row['referral_pdf_ready'] && $referral->slipSubmission)
-                                                    <a href="{{ route('slips.submissions.preview-pdf', $referral->slipSubmission) }}#toolbar=0&amp;navpanes=0" target="_blank" rel="noopener" class="block text-center text-xs font-semibold text-blue-700 underline dark:text-blue-300">Preview referral form</a>
+                                                    <a href="{{ route('slips.submissions.system-preview', $referral->slipSubmission) }}" target="_blank" rel="noopener" class="block text-center text-xs font-semibold text-blue-700 underline dark:text-blue-300">Preview referral form</a>
                                                 @endif
                                                 <form method="POST" action="{{ route('guidance.referrals.document-control', $referral) }}" class="space-y-2">
                                                     @csrf
@@ -396,4 +445,34 @@
             @endif
         </div>
     </main>
+    <script>
+        document.querySelectorAll('textarea[data-word-limit]').forEach((textarea) => {
+            const form = textarea.closest('form');
+            const counter = form.querySelector('[data-word-count]');
+            const limit = Number(textarea.dataset.wordLimit);
+            const countWords = () => (textarea.value.trim().match(/\S+/g) || []).length;
+            const updateCounter = () => { counter.textContent = countWords(); };
+
+            textarea.addEventListener('input', updateCounter);
+            textarea.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter' || event.shiftKey) return;
+                event.preventDefault();
+                if (countWords() <= limit) form.requestSubmit();
+                else {
+                    textarea.setCustomValidity(`Please keep the private note to ${limit} words or fewer.`);
+                    textarea.reportValidity();
+                }
+            });
+            textarea.addEventListener('input', () => textarea.setCustomValidity(''));
+            form.addEventListener('submit', (event) => {
+                if (countWords() > limit) {
+                    event.preventDefault();
+                    textarea.setCustomValidity(`Please keep the private note to ${limit} words or fewer.`);
+                    textarea.reportValidity();
+                }
+            });
+            updateCounter();
+        });
+    </script>
+    @include('partials.auto-refresh')
 </x-layouts::app>

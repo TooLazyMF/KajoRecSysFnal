@@ -29,6 +29,12 @@
                         </a>
                         @if ($submission->slip === 'qf-bo-oss-04-client-information-form')
                             <a
+                                href="{{ route('slips.submissions.pdf', $submission) }}"
+                                class="inline-flex items-center justify-center rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-700"
+                            >
+                                Download completed PDF
+                            </a>
+                            <a
                                 href="{{ route('slips.submissions.docx', $submission) }}"
                                 class="inline-flex items-center justify-center rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-700"
                             >
@@ -39,7 +45,7 @@
                                 href="{{ route('slips.submissions.pdf', $submission) }}"
                                 class="inline-flex items-center justify-center rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-700"
                             >
-                                Open PDF
+                                Download original PDF
                             </a>
                         @endif
                     </div>
@@ -58,6 +64,13 @@
                             </li>
                         @endforeach
                     </ul>
+                </section>
+            @endif
+
+            @if ($submission->slip === 'class-admission-slip' && filled($submission->data['student_excuse'] ?? null))
+                <section class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-zinc-200">
+                    <flux:heading size="lg">Student excuse</flux:heading>
+                    <p class="mt-3 whitespace-pre-line text-sm leading-6 text-zinc-700">{{ $submission->data['student_excuse'] }}</p>
                 </section>
             @endif
 
@@ -81,7 +94,49 @@
                     <form method="POST" action="{{ route('guidance.slip-review.approve', $assignment) }}" class="space-y-5">
                         @csrf
                         @foreach ($guidanceFields as $field)
-                            @if ($field['type'] === 'checkboxes')
+                            @if ($field['type'] === 'system_generated')
+                                <div>
+                                    <span class="text-sm font-medium text-zinc-700">{{ $field['label'] }}</span>
+                                    <p class="mt-1 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800">
+                                        {{ $guidanceData[$field['key']] ?? 'Generated when the referral is received' }}
+                                    </p>
+                                </div>
+                            @elseif ($field['key'] === 'actions_taken')
+                                @php($selectedAction = old('details.'.$field['key'], $submission->data[$field['key']] ?? ''))
+                                <fieldset class="space-y-2">
+                                    <legend class="text-sm font-medium text-zinc-700">
+                                        {{ $field['label'] }}{{ $field['required'] ? ' *' : '' }}
+                                    </legend>
+                                    <div class="grid gap-2 sm:grid-cols-2">
+                                        @foreach ($field['options'] as $value => $label)
+                                            <label class="flex items-center gap-2 text-sm text-zinc-700">
+                                                <input
+                                                    type="radio"
+                                                    name="details[{{ $field['key'] }}]"
+                                                    value="{{ $value }}"
+                                                    @checked($selectedAction === $value)
+                                                    @required($field['required'])
+                                                    class="border-zinc-300 text-emerald-700 focus:ring-emerald-700"
+                                                >
+                                                <span>{{ $label }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </fieldset>
+                            @elseif ($field['key'] === 'other_action_detail')
+                                @php($selectedAction = old('details.actions_taken', $submission->data['actions_taken'] ?? ''))
+                                <label data-other-action-field @if ($selectedAction !== 'other_action') hidden @endif class="space-y-2">
+                                    <span class="text-sm font-medium text-zinc-700">{{ $field['label'] }}</span>
+                                    <input
+                                        type="text"
+                                        name="details[{{ $field['key'] }}]"
+                                        value="{{ old('details.'.$field['key'], $submission->data[$field['key']] ?? '') }}"
+                                        maxlength="255"
+                                        @required($selectedAction === 'other_action')
+                                        class="w-full rounded-lg border-zinc-300 bg-white text-sm text-zinc-900 shadow-sm focus:border-green-700 focus:ring-green-700"
+                                    >
+                                </label>
+                            @elseif ($field['type'] === 'checkboxes')
                                 @php($selectedValues = old('details.'.$field['key'], $submission->data[$field['key']] ?? []))
                                 @php($selectedValues = is_array($selectedValues) ? $selectedValues : (filled($selectedValues) ? [$selectedValues] : []))
                                 <fieldset class="space-y-2">
@@ -132,13 +187,24 @@
                             <flux:button variant="primary" type="submit">Save Guidance Details &amp; Approve</flux:button>
                         </div>
                     </form>
+                    <script>
+                        const reviewForm = document.currentScript.closest('section').querySelector('form');
+                        reviewForm.querySelectorAll('input[name="details[actions_taken]"]').forEach((input) => {
+                            input.addEventListener('change', () => {
+                                const field = reviewForm.querySelector('[data-other-action-field]');
+                                const isOther = input.checked && input.value === 'other_action';
+                                field.hidden = !isOther;
+                                field.querySelector('input').required = isOther;
+                            });
+                        });
+                    </script>
                 </section>
             @endif
 
             @if ($submission->slip === 'qf-bo-oss-04-client-information-form' || $referralPdfReady)
                 <iframe
-                    src="{{ route('slips.submissions.pdf', $submission) }}"
-                    title="Completed form PDF"
+                    src="{{ route('slips.submissions.system-preview', $submission) }}"
+                    title="Completed slip PDF — system view-only preview"
                     class="h-[80vh] w-full rounded-lg border border-zinc-300 bg-white"
                 ></iframe>
             @elseif ($submission->slip === 'student-referral-slip')
@@ -146,8 +212,8 @@
                     The referral PDF is not printable yet. Guidance can issue the Class Admission Slip while waiting for the document-control values. The PDF will be available here after all four values are entered.
                 </section>
                 <iframe
-                    src="{{ route('slips.submissions.preview-pdf', $submission) }}#toolbar=0&navpanes=0"
-                    title="Referral form preview"
+                    src="{{ route('slips.submissions.system-preview', $submission) }}"
+                    title="Referral form system preview"
                     class="h-[80vh] w-full rounded-xl border border-amber-200 bg-white"
                 ></iframe>
             @endif

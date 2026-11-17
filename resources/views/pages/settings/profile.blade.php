@@ -123,6 +123,16 @@ new #[Title('Profile settings')] class extends Component {
             </div>
         </form>
 
+        @if (auth()->user()->role === 'student')
+            <div class="my-6 rounded-xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-950/30">
+                <flux:heading size="lg">Client Information Form</flux:heading>
+                <flux:text class="mt-1">Update the personal, family, and educational information used by the Guidance Office.</flux:text>
+                <a href="{{ route('profile.client-information.edit') }}" class="mt-4 inline-flex items-center rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800">
+                    Edit CIF
+                </a>
+            </div>
+        @endif
+
         {{-- @chisel-email-verification --}}
         @if ($this->showDeleteUser)
         {{-- @end-chisel-email-verification --}}

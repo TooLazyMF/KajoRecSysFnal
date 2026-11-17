@@ -16,11 +16,11 @@
                         </div>
                         <div class="flex shrink-0 items-center gap-3 text-xs text-neutral-500">
                             @if ($type === 'slips')
-                                <span>{{ $student->slip_submissions_count + $student->cns_requests_count + $student->slip_assignments_count }} slip records</span>
+                                <span>{{ $student->slip_submissions_count + $student->slip_informations_count + $student->slip_assignments_count }} slip records</span>
                             @elseif ($type === 'appointments')
                                 <span>{{ $student->appointments_count }} appointments</span>
                             @else
-                                <span>{{ $student->appointments_count + $student->slip_submissions_count + $student->cns_requests_count + $student->slip_assignments_count }} total records</span>
+                                <span>{{ $student->appointments_count + $student->slip_submissions_count + $student->slip_informations_count + $student->slip_assignments_count }} total records</span>
                             @endif
                             <span aria-hidden="true" class="text-lg">›</span>
                         </div>

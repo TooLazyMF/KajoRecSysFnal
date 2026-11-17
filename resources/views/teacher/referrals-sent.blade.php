@@ -6,14 +6,18 @@
             <section class="space-y-4">
                 @forelse ($referrals as $referral)
                     @php($admission = $referral->followups->firstWhere('slip', 'class-admission-slip'))
+                    @php($appointment = $referral->appointments->first(fn ($item) => !in_array($item->status, ['done', 'missed'], true)))
                     <article class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                        @if ($appointment && $admission?->status !== 'approved')
+                            <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200">Guidance issued a counseling session for this student. The Class Admission result is pending until counseling is completed.</div>
+                        @endif
                         <div class="flex flex-wrap items-start justify-between gap-4"><div><h2 class="font-semibold">{{ $referral->student->name }}</h2><p class="text-sm text-gray-500 dark:text-zinc-400">{{ $referral->student->id_number ?: 'Student profile' }} · Sent {{ $referral->created_at->format('M j, Y') }}</p></div><span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">{{ $admission?->status === 'approved' ? ($admission->student_sent_to_teacher_at ? 'Result sent by student · acknowledgment needed' : 'Result issued · waiting for student') : ($admission ? 'Class Admission processing' : 'Awaiting Class Admission result') }}</span></div>
                         <div class="mt-4 flex flex-wrap items-center gap-4">
                             @if ($admission?->status === 'approved' && $admission->student_sent_to_teacher_at)
                                 @if ($admission->slipSubmission)@include('teacher.partials.submission-preview-modal', ['submission' => $admission->slipSubmission])@endif
                                 <form method="POST" action="{{ route('teacher.referrals.acknowledge', $referral) }}">@csrf<button class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">OK</button></form>
                             @elseif ($admission?->status === 'approved')
-                                <span class="text-sm text-amber-700 dark:text-amber-300">Waiting for {{ $referral->student->name }} to send the result to you.</span>
+                                <span class="text-sm text-amber-700 dark:text-amber-300">The Class Admission result is still being processed by Guidance.</span>
                             @elseif ($referral->slipSubmission)
                                 @include('teacher.partials.submission-preview-modal', ['submission' => $referral->slipSubmission])
                             @endif

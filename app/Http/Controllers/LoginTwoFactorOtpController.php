@@ -16,7 +16,7 @@ class LoginTwoFactorOtpController extends Controller
         $user = $this->challengedUser($request);
 
         if (! $user) {
-            return to_route('login');
+            return to_route('home');
         }
 
         $otp->send(

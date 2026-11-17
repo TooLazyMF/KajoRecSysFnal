@@ -30,20 +30,6 @@
                     <a href="{{ route('teacher.referral-history') }}" class="mt-4 inline-flex font-semibold text-[#28643a] hover:underline dark:text-[#91dfa6]">View referral history →</a>
                 </section>
             </div>
-            @if ($referralAppointments->isNotEmpty())
-                <section class="rounded-2xl border border-blue-200 bg-white p-6 dark:border-blue-900 dark:bg-zinc-900">
-                    <h2 class="text-lg font-bold">Guidance appointments</h2>
-                    <p class="mt-1 text-sm text-slate-500 dark:text-zinc-400">Schedule and status for appointments created from your referrals. Counselor CIF notes are private.</p>
-                    <div class="mt-4 divide-y divide-slate-200 dark:divide-zinc-700">
-                        @foreach ($referralAppointments as $appointment)
-                            <div class="flex flex-wrap items-center justify-between gap-3 py-3">
-                                <div><p class="font-semibold">{{ $appointment->requester->name }}</p><p class="text-sm text-slate-500 dark:text-zinc-400">{{ $appointment->scheduled_at?->format('M j, Y g:i A') }} · {{ $appointment->duration_minutes }} minutes</p></div>
-                                <span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold capitalize text-blue-800 dark:bg-blue-950/50 dark:text-blue-200">{{ $appointment->status }}</span>
-                            </div>
-                        @endforeach
-                    </div>
-                </section>
-            @endif
         </div>
     </main>
 </x-layouts::app>

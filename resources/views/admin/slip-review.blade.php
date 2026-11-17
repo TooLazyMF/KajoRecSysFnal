@@ -4,7 +4,7 @@
             <div>
                 <flux:heading size="xl" class="text-zinc-900 dark:text-zinc-100">Slip Approvals</flux:heading>
                 <flux:text class="mt-2 text-zinc-600 dark:text-zinc-300">
-                    Review student submissions. Approval locks a form against further student edits.
+                    Student form requests appear here immediately. Completed submissions are ready for Guidance review.
                 </flux:text>
             </div>
 
@@ -27,7 +27,7 @@
                                     <th class="px-5 py-3">Form</th>
                                     <th class="px-5 py-3">Student</th>
                                     <th class="px-5 py-3">Sent by / Requested by</th>
-                                    <th class="px-5 py-3">Submitted</th>
+                                    <th class="px-5 py-3">Status / received</th>
                                     <th class="px-5 py-3 text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -35,10 +35,10 @@
                                 @foreach ($assignments as $assignment)
                                     @php
                                         $title = $assignment->slip === 'cns'
-                                            ? 'Certificate of No Scholarship'
+                                            ? 'Slip Information'
                                             : ($slips[$assignment->slip]['title'] ?? 'Assigned Slip');
-                                        $showUrl = $assignment->slip === 'cns' && $assignment->cnsRequest
-                                            ? route('cns.requests.show', $assignment->cnsRequest)
+                                        $showUrl = $assignment->slip === 'cns' && $assignment->slipInformation
+                                            ? route('slip-informations.show', $assignment->slipInformation)
                                             : ($assignment->slipSubmission
                                                 ? route('slips.submissions.show', $assignment->slipSubmission)
                                                 : null);
@@ -56,14 +56,21 @@
                                                 {{ $assignment->assignedBy->name }}
                                             @endif
                                         </td>
-                                        <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">{{ $assignment->completed_at?->format('M j, Y g:i A') }}</td>
+                                        <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
+                                            @if ($assignment->status === 'pending')
+                                                Request received
+                                                <span class="block text-xs text-zinc-500 dark:text-zinc-400">{{ $assignment->created_at->format('M j, Y g:i A') }}</span>
+                                            @else
+                                                {{ $assignment->completed_at?->format('M j, Y g:i A') }}
+                                            @endif
+                                        </td>
                                         <td class="space-x-3 px-5 py-4 text-right">
                                             @if ($showUrl)
                                                 <a href="{{ $showUrl }}" class="font-semibold text-green-700 hover:underline dark:text-emerald-400">
                                                     Review
                                                 </a>
                                             @endif
-                                            @if ($assignment->slip !== 'class-admission-slip')
+                                            @if ($assignment->status === 'submitted' && $assignment->slip !== 'class-admission-slip')
                                                 <form method="POST" action="{{ route('guidance.slip-review.approve', $assignment) }}" class="inline">
                                                     @csrf
                                                     <button type="submit" class="rounded-lg bg-green-700 px-4 py-2 text-xs font-semibold text-white hover:bg-green-800">
@@ -81,4 +88,5 @@
             @endif
         </div>
     </main>
+    @include('partials.auto-refresh')
 </x-layouts::app>

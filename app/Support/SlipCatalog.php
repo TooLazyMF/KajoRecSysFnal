@@ -38,15 +38,22 @@ class SlipCatalog
                     ],
                 ]],
                 'guidance_fields' => [
-                    self::field('referral_slip_number', 'Reference Referral Slip No.', 90, 79, 55, true),
-                    self::field('date_received', 'Date Received', 187, 79, 25, true, 'date'),
+                    [
+                        ...self::field('referral_slip_number', 'Reference Referral Slip No.', 90, 79, 55, true),
+                        'type' => 'system_generated',
+                    ],
+                    [
+                        ...self::field('date_received', 'Date Received', 187, 79, 25, true, 'date'),
+                        'type' => 'system_generated',
+                    ],
                     self::checks('actions_taken', 'Action/s Taken', [
                         'verified_documents' => ['Verified supporting document/s', 14, 128],
                         'interviewed_with_guidance' => ['Interviewed with guidance', 94, 128],
                         'life_coaching' => ['Life coaching', 14, 133],
                         'parent_conference' => ['Parent conference', 94, 133],
-                        'other_action' => ['Other', 14, 138],
+                        'other_action' => ['Others', 14, 138],
                     ]),
+                    self::field('other_action_detail', 'Specify other action', 31, 138, 150, false),
                     [
                         ...self::field('excused_status', 'Absence Decision', 94, 143, 75, true, 'select'),
                         'options' => [
@@ -80,7 +87,11 @@ class SlipCatalog
                             [...self::field('middle_name', 'Middle Name', 270, 86, 20, false, 'text', 1, 1), 'readonly' => true],
                             [...self::field('student_id', 'Student ID Number', 292, 86, 25, true, 'text', 1, 1), 'readonly' => true],
                             self::field('contact_number', 'Contact Number', 183, 100, 50, true, 'text', 1, 1),
-                            [...self::field('course_year', 'Course and Year', 254, 100, 63, true, 'text', 1, 1), 'readonly' => true],
+                            [...self::field('course_year', 'Course and Year', 254, 100, 63, false, 'text', 1, 1), 'readonly' => true],
+                            [
+                                ...self::field('college', 'College of', 183, 96, 133, true, 'select', 1, 1, false),
+                                'options' => self::collegeOptions(),
+                            ],
                             self::field('birth_date', 'Birth Date', 183, 108, 38, false, 'date', 1, 1),
                             [...self::field('sex', 'Sex', 229, 108, 30, false, 'text', 1, 1), 'readonly' => true],
                             self::field('civil_status', 'Civil Status', 264, 108, 45, false, 'text', 1, 1),
@@ -123,7 +134,6 @@ class SlipCatalog
                             self::checks('consent', 'Informed Consent', [
                                 'agree' => ['I have read and agree to the informed consent statement', 15, 104],
                             ], true, 3),
-                            self::field('consent_name', 'Printed Name for Consent', 12, 103, 125, true, 'text', 1, 3),
                         ],
                     ],
                 ],
@@ -319,6 +329,67 @@ class SlipCatalog
         ];
 
         return $field;
+    }
+
+    /** @return array<string, string> */
+    public static function collegeOptions(): array
+    {
+        return [
+            'CAT' => 'College of Applied Technology (CAT)',
+            'CED' => 'College of Teacher Education (CED)',
+            'CBAM' => 'College of Business Administration and Management (CBAM)',
+            'CCJE' => 'College of Criminal Justice Education (CCJE)',
+        ];
+    }
+
+    /** @return array<string, string> */
+    public static function courseOptions(): array
+    {
+        return [
+            'BEEd' => 'Bachelor of Elementary Education (BEEd)',
+            'BSEd' => 'Bachelor of Secondary Education (BSEd)',
+            'BCAEd' => 'Bachelor of Culture and Arts Education (BCAEd)',
+            'BTVTED' => 'Bachelor of Technical-Vocational Teacher Education (BTVTED)',
+            'BTLED' => 'Bachelor of Technology and Livelihood Education (BTLED)',
+            'BIT' => 'Bachelor of Industrial Technology (BIT)',
+            'BS Entrep' => 'Bachelor of Science in Entrepreneurship (BS Entrep)',
+            'BPA' => 'Bachelor in Public Administration (BPA)',
+            'BSIT' => 'Bachelor of Science in Information Technology (BSIT)',
+            'BS Crim' => 'Bachelor of Science in Criminology (BS Crim)',
+        ];
+    }
+
+    /** @return array<string, string> */
+    public static function courseCollegeMap(): array
+    {
+        return [
+            'BEEd' => 'CED',
+            'BSEd' => 'CED',
+            'BCAEd' => 'CED',
+            'BTVTED' => 'CED',
+            'BTLED' => 'CED',
+            'BIT' => 'CAT',
+            'BSIT' => 'CAT',
+            'BS Entrep' => 'CBAM',
+            'BPA' => 'CBAM',
+            'BS Crim' => 'CCJE',
+        ];
+    }
+
+    public static function canonicalCollege(?string $college): ?string
+    {
+        return trim((string) $college) === 'CTE' ? 'CED' : ($college ?: null);
+    }
+
+    /** @return array<string, string> */
+    public static function yearLevelOptions(): array
+    {
+        return [
+            '1' => '1st Year',
+            '2' => '2nd Year',
+            '3' => '3rd Year',
+            '4' => '4th Year',
+        ];
     }
 
     /**

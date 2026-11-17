@@ -14,9 +14,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'bundle_id',
     'slip',
     'notes',
+    'guidance_notes',
     'status',
     'slip_submission_id',
-    'cns_request_id',
+    'slip_information_id',
     'completed_at',
     'approved_by',
     'approved_at',
@@ -28,6 +29,8 @@ class SlipAssignment extends Model
     protected function casts(): array
     {
         return [
+            'notes' => 'encrypted',
+            'guidance_notes' => 'encrypted',
             'completed_at' => 'datetime',
             'approved_at' => 'datetime',
             'teacher_acknowledged_at' => 'datetime',
@@ -65,9 +68,9 @@ class SlipAssignment extends Model
         return $this->belongsTo(SlipSubmission::class);
     }
 
-    public function cnsRequest(): BelongsTo
+    public function slipInformation(): BelongsTo
     {
-        return $this->belongsTo(CnsRequest::class);
+        return $this->belongsTo(SlipInformation::class);
     }
 
     public function approver(): BelongsTo

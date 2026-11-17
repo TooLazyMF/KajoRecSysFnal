@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
-use App\Models\CnsRequest;
 use App\Models\SlipAssignment;
+use App\Models\SlipInformation;
 use App\Models\SlipSubmission;
 use App\Models\User;
 use App\Support\SlipCatalog;
@@ -23,7 +23,6 @@ class StudentRecordController extends Controller
             ->with([
                 'slipSubmissions' => fn ($query) => $query
                     ->where('slip', 'qf-bo-oss-04-client-information-form')
-                    ->where('review_status', 'approved')
                     ->latest(),
                 'slipAssignments' => fn ($query) => $query
                     ->whereIn('slip', ['student-referral-slip', 'class-admission-slip'])
@@ -41,10 +40,13 @@ class StudentRecordController extends Controller
                     ->with('reviewer')
                     ->orderByDesc('completed_at'),
             ])
-            ->orderBy('name')
+            ->orderBy('id')
             ->get();
 
-        return view('admin.student-records', compact('students'));
+        return view('admin.student-records', [
+            'students' => $students,
+            'cifDefinition' => SlipCatalog::all()['qf-bo-oss-04-client-information-form'],
+        ]);
     }
 
     public function monthlyReport(Request $request): View
@@ -97,13 +99,13 @@ class StudentRecordController extends Controller
                 if ($type === 'slips') {
                     $query->whereHas('slipAssignments')
                         ->orWhereHas('slipSubmissions')
-                        ->orWhereHas('cnsRequests');
+                        ->orWhereHas('slipInformations');
                 } elseif ($type === 'appointments') {
                     $query->whereHas('appointments');
                 }
             })
-            ->withCount(['appointments', 'slipAssignments', 'slipSubmissions', 'cnsRequests'])
-            ->orderBy('name')
+            ->withCount(['appointments', 'slipAssignments', 'slipSubmissions', 'slipInformations'])
+            ->orderBy('id')
             ->get();
 
         return view('admin.record-history.index', compact('students', 'type'));
@@ -147,14 +149,14 @@ class StudentRecordController extends Controller
             ]);
         });
 
-        CnsRequest::query()->where('user_id', $student->id)->latest()->get()->each(function (CnsRequest $cnsRequest) use ($records) {
+        SlipInformation::query()->where('user_id', $student->id)->latest()->get()->each(function (SlipInformation $slipInformation) use ($records) {
             $records->push([
                 'type' => 'Slip',
-                'title' => 'Certificate of No Scholarship',
-                'date' => $cnsRequest->created_at,
-                'status' => $cnsRequest->review_status,
-                'details' => $cnsRequest->purpose,
-                'url' => route('cns.requests.show', $cnsRequest),
+                'title' => 'Slip Information',
+                'date' => $slipInformation->created_at,
+                'status' => $slipInformation->review_status,
+                'details' => $slipInformation->purpose,
+                'url' => route('slip-informations.show', $slipInformation),
             ]);
         });
 
@@ -216,8 +218,8 @@ class StudentRecordController extends Controller
             ->where(function ($query) {
                 $query->where('is_active', false)->orWhere('is_graduated', true);
             })
-            ->withCount(['appointments', 'slipAssignments', 'slipSubmissions', 'cnsRequests'])
-            ->orderBy('name')
+            ->withCount(['appointments', 'slipAssignments', 'slipSubmissions', 'slipInformations'])
+            ->orderBy('id')
             ->get();
 
         return view('admin.record-history.archived', compact('students'));

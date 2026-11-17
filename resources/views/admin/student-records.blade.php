@@ -25,7 +25,6 @@
                         <tbody id="student-records-list" class="divide-y divide-neutral-200 dark:divide-neutral-800">
                             @forelse ($students as $student)
                                 @php
-                                    $cifSubmission = $student->slipSubmissions->first();
                                     $slipRecords = $student->slipAssignments
                                         ->sortByDesc('completed_at')
                                         ->map(function ($assignment) {
@@ -55,7 +54,7 @@
                                                 'date' => $assignment->completed_at?->format('M j, Y g:i A') ?? 'Date not recorded',
                                                 'status' => 'Completed',
                                                 'appointment' => $appointmentLabel,
-                                                'url' => $submission && $referralPdfReady ? route('slips.submissions.pdf', $submission) : null,
+                                                'url' => $submission && $referralPdfReady ? route('slips.submissions.system-preview', $submission) : null,
                                             ];
                                         })
                                         ->values();
@@ -78,9 +77,9 @@
                                     <td class="px-5 py-4 text-neutral-600 dark:text-neutral-300">{{ $student->is_active && ! $student->is_graduated ? 'Active' : 'Archived' }}</td>
                                     <td class="px-5 py-4">
                                         <div class="flex flex-wrap gap-2">
-                                            <button type="button" data-cif-url="{{ $cifSubmission ? route('slips.submissions.pdf', $cifSubmission) : '' }}" data-student-name="{{ $student->name }}" @disabled(! $cifSubmission) class="rounded-lg border border-blue-300 px-3 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-blue-800 dark:text-blue-200 dark:hover:bg-blue-950/40">CIF</button>
-                                            <button type="button" data-appointments="{{ json_encode($appointments->all(), JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_HEX_TAG) }}" data-student-name="{{ $student->name }}" @disabled($appointments->isEmpty()) class="rounded-lg border border-sky-300 px-3 py-2 text-sm font-semibold text-sky-800 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-sky-800 dark:text-sky-200 dark:hover:bg-sky-950/40">Appointment</button>
-                                            <button type="button" data-slip-records="{{ json_encode($slipRecords->all(), JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_HEX_TAG) }}" data-student-name="{{ $student->name }}" @disabled($slipRecords->isEmpty()) class="rounded-lg border border-purple-300 px-3 py-2 text-sm font-semibold text-purple-800 hover:bg-purple-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-purple-800 dark:text-purple-200 dark:hover:bg-purple-950/40">Referrals and Class admission</button>
+                                            <button type="button" data-cif-modal="student-cif-modal-{{ $student->id }}" class="rounded-lg border border-blue-300 px-3 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-200 dark:hover:bg-blue-950/40">CIF</button>
+                                            <button type="button" data-appointments="{{ json_encode($appointments->all(), JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_HEX_TAG) }}" data-student-name="{{ $student->name }}" class="rounded-lg border border-sky-300 px-3 py-2 text-sm font-semibold text-sky-800 hover:bg-sky-50 dark:border-sky-800 dark:text-sky-200 dark:hover:bg-sky-950/40">Appointment</button>
+                                            <button type="button" data-slip-records="{{ json_encode($slipRecords->all(), JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_HEX_TAG) }}" data-student-name="{{ $student->name }}" class="rounded-lg border border-purple-300 px-3 py-2 text-sm font-semibold text-purple-800 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-200 dark:hover:bg-purple-950/40">Referrals and Class admission</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -92,6 +91,101 @@
                 </div>
             </section>
         </div>
+
+        @foreach ($students as $student)
+            @php
+                $cifSubmission = $student->slipSubmissions->first();
+                $cifData = $cifSubmission?->data?->getArrayCopy() ?? [];
+                $appointments = $student->appointments;
+            @endphp
+            <dialog id="student-cif-modal-{{ $student->id }}" class="h-[90vh] w-[min(72rem,calc(100%-2rem))] max-w-none rounded-2xl border border-neutral-200 bg-white p-0 shadow-2xl backdrop:bg-black/50 dark:border-neutral-700 dark:bg-neutral-900">
+                <div class="flex h-full flex-col">
+                    <div class="flex items-center justify-between gap-4 border-b border-neutral-200 px-5 py-4 dark:border-neutral-700">
+                        <div>
+                            <h2 class="text-lg font-bold">{{ $student->name }} — CIF</h2>
+                            <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+                                Client Information Form · read-only
+                                @if ($cifSubmission)
+                                    · {{ ucfirst($cifSubmission->review_status) }}
+                                @endif
+                            </p>
+                        </div>
+                        <button type="button" onclick="this.closest('dialog').close()" class="text-3xl leading-none text-neutral-400" aria-label="Close CIF">&times;</button>
+                    </div>
+
+                    @if (! $cifSubmission)
+                        <p class="m-6 rounded-xl border border-amber-200 bg-amber-50 p-5 text-base text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">No filled Client Information Form is available for this student yet.</p>
+                    @else
+                        <nav class="flex gap-2 border-b border-neutral-200 px-5 py-3 dark:border-neutral-700" aria-label="CIF pages">
+                            <button type="button" data-cif-page-target="1" aria-current="page" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white">Page 1 · Client Information</button>
+                            <button type="button" data-cif-page-target="2" class="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-700 dark:border-neutral-600 dark:text-neutral-200">Page 2 · Appointment Records</button>
+                        </nav>
+
+                        <section data-cif-page="1" class="min-h-0 flex-1 space-y-5 overflow-y-auto bg-neutral-50 p-5 dark:bg-neutral-950">
+                            @foreach ($cifDefinition['groups'] as $group)
+                                <section class="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
+                                    <h3 class="border-b border-neutral-200 pb-3 text-sm font-bold text-neutral-900 dark:border-neutral-700 dark:text-white">{{ $group['title'] }}</h3>
+                                    <dl class="mt-4 grid gap-4 sm:grid-cols-2">
+                                        @foreach ($group['fields'] as $field)
+                                            @php($fieldValue = $cifData[$field['key']] ?? null)
+                                            <div class="{{ ($field['type'] ?? 'text') === 'textarea' ? 'sm:col-span-2' : '' }}">
+                                                <dt class="text-xs font-semibold text-neutral-500 dark:text-neutral-400">{{ $field['label'] }}</dt>
+                                                <dd class="mt-1 whitespace-pre-wrap rounded-md bg-neutral-50 px-3 py-2 text-sm text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100">
+                                                    @if (($field['type'] ?? 'text') === 'checkboxes')
+                                                        @php($selectedOptions = is_array($fieldValue) ? $fieldValue : [])
+                                                        @forelse ($field['options'] as $optionValue => $optionLabel)
+                                                            @if (in_array($optionValue, $selectedOptions, true))
+                                                                <span class="mr-3">{{ $optionLabel }}</span>
+                                                            @endif
+                                                        @empty
+                                                            No response
+                                                        @endforelse
+                                                        @if ($selectedOptions === [])
+                                                            No response
+                                                        @endif
+                                                    @elseif (($field['type'] ?? 'text') === 'select')
+                                                        {{ filled($fieldValue) ? ($field['options'][$fieldValue] ?? $fieldValue) : 'No response' }}
+                                                    @else
+                                                        {{ filled($fieldValue) ? $fieldValue : 'No response' }}
+                                                    @endif
+                                                </dd>
+                                            </div>
+                                        @endforeach
+                                    </dl>
+                                </section>
+                            @endforeach
+                        </section>
+
+                        <section data-cif-page="2" class="hidden min-h-0 flex-1 overflow-y-auto p-5">
+                            <div class="overflow-x-auto rounded-xl border border-neutral-200 dark:border-neutral-700">
+                                <table class="min-w-full text-left text-sm">
+                                    <thead class="bg-neutral-100 text-xs font-bold uppercase tracking-wide text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200">
+                                        <tr>
+                                            <th class="px-4 py-3">Date</th>
+                                            <th class="px-4 py-3">Concerns</th>
+                                            <th class="px-4 py-3">Interventions / Actions Taken</th>
+                                            <th class="px-4 py-3">Attending Counselor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-neutral-200 dark:divide-neutral-700">
+                                        @forelse ($appointments as $appointment)
+                                            <tr class="align-top text-neutral-800 dark:text-neutral-200">
+                                                <td class="whitespace-nowrap px-4 py-3">{{ ($appointment->scheduled_at ?? $appointment->completed_at)?->format('m/d/Y') ?? '—' }}</td>
+                                                <td class="min-w-40 px-4 py-3">{{ $appointment->concerns ?? $appointment->purpose ?? '—' }}</td>
+                                                <td class="min-w-56 px-4 py-3">{{ $appointment->action_taken ?? '—' }}</td>
+                                                <td class="whitespace-nowrap px-4 py-3">{{ $appointment->reviewer?->name ?? '—' }}</td>
+                                            </tr>
+                                        @empty
+                                            <tr><td colspan="4" class="px-4 py-8 text-center text-neutral-500 dark:text-neutral-400">No appointment records are available for this student.</td></tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    @endif
+                </div>
+            </dialog>
+        @endforeach
 
         <dialog id="student-record-preview-modal" class="h-[90vh] w-[min(72rem,calc(100%-2rem))] max-w-none rounded-2xl border border-neutral-200 bg-white p-0 shadow-2xl backdrop:bg-black/50 dark:border-neutral-700 dark:bg-neutral-900">
             <div class="flex h-full flex-col">
@@ -142,15 +236,34 @@
             const appointmentDetailTitle = document.getElementById('student-appointment-detail-title');
             const appointmentDetailContent = document.getElementById('student-appointment-detail-content');
 
+            document.querySelectorAll('[id^="student-cif-modal-"]').forEach((modal) => {
+                const pageButtons = modal.querySelectorAll('[data-cif-page-target]');
+                const pages = modal.querySelectorAll('[data-cif-page]');
+
+                pageButtons.forEach((button) => {
+                    button.addEventListener('click', () => {
+                        const selectedPage = button.dataset.cifPageTarget;
+
+                        pageButtons.forEach((pageButton) => {
+                            const isSelected = pageButton === button;
+                            pageButton.setAttribute('aria-current', isSelected ? 'page' : 'false');
+                            pageButton.classList.toggle('bg-blue-600', isSelected);
+                            pageButton.classList.toggle('text-white', isSelected);
+                            pageButton.classList.toggle('border', !isSelected);
+                            pageButton.classList.toggle('border-neutral-300', !isSelected);
+                            pageButton.classList.toggle('text-neutral-700', !isSelected);
+                        });
+                        pages.forEach((page) => {
+                            page.classList.toggle('hidden', page.dataset.cifPage !== selectedPage);
+                        });
+                    });
+                });
+            });
+
             recordsList.addEventListener('click', (event) => {
-                const cifButton = event.target.closest('[data-cif-url]');
-                if (cifButton && cifButton.dataset.cifUrl) {
-                    previewTitle.textContent = `${cifButton.dataset.studentName} — CIF`;
-                    previewNote.textContent = 'Client Information Form · read-only';
-                    previewUnavailable.classList.add('hidden');
-                    previewFrame.classList.remove('hidden');
-                    previewFrame.src = `${cifButton.dataset.cifUrl}#toolbar=0&navpanes=0&zoom=page-width`;
-                    previewModal.showModal();
+                const cifButton = event.target.closest('[data-cif-modal]');
+                if (cifButton) {
+                    document.getElementById(cifButton.dataset.cifModal).showModal();
                     return;
                 }
 
@@ -162,7 +275,18 @@
                     const body = document.createElement('tbody');
                     body.className = 'divide-y divide-neutral-100 dark:divide-neutral-800';
 
-                    JSON.parse(slipButton.dataset.slipRecords).forEach((record) => {
+                    const slipRecords = JSON.parse(slipButton.dataset.slipRecords);
+                    if (slipRecords.length === 0) {
+                        const row = document.createElement('tr');
+                        const cell = document.createElement('td');
+                        cell.className = 'px-4 py-8 text-center text-neutral-500 dark:text-neutral-400';
+                        cell.colSpan = 4;
+                        cell.textContent = 'No completed referral or class admission slips are available for this student yet.';
+                        row.append(cell);
+                        body.append(row);
+                    }
+
+                    slipRecords.forEach((record) => {
                         const row = document.createElement('tr');
                         const recordCell = document.createElement('td');
                         recordCell.className = 'px-4 py-4';
@@ -218,7 +342,15 @@
                 appointmentDetailContent.replaceChildren();
                 document.getElementById('student-appointments-title').textContent = `${appointmentsButton.dataset.studentName} — Appointments`;
 
-                JSON.parse(appointmentsButton.dataset.appointments).forEach((appointment) => {
+                const appointments = JSON.parse(appointmentsButton.dataset.appointments);
+                if (appointments.length === 0) {
+                    const emptyState = document.createElement('p');
+                    emptyState.className = 'p-6 text-center text-base text-neutral-500 dark:text-neutral-400';
+                    emptyState.textContent = 'No completed appointments are available for this student yet.';
+                    appointmentList.append(emptyState);
+                }
+
+                appointments.forEach((appointment) => {
                     const button = document.createElement('button');
                     button.type = 'button';
                     button.className = 'w-full px-5 py-4 text-left transition hover:bg-sky-50 dark:hover:bg-sky-950/30';

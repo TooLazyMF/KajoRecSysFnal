@@ -2,17 +2,27 @@
 
 use App\Http\Controllers\AccountActivityController;
 use App\Http\Controllers\AppointmentController;
-use App\Http\Controllers\CnsController;
+use App\Http\Controllers\DataBackupController;
 use App\Http\Controllers\EmailVerificationOtpController;
 use App\Http\Controllers\LoginTwoFactorOtpController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PasswordResetOtpController;
+use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\SlipSubmissionController;
+use App\Http\Controllers\SlipInformationController;
 use App\Http\Controllers\StudentDashboardController;
 use App\Http\Controllers\StudentRecordController;
+use App\Http\Controllers\TeacherProfileController;
 use App\Http\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome')->name('home');
+Route::post('/', [\Laravel\Fortify\Http\Controllers\AuthenticatedSessionController::class, 'store'])
+    ->middleware(['guest', 'throttle:login'])
+    ->name('login.root');
+Route::post('register', [RegistrationController::class, 'store'])
+    ->middleware(['guest', 'throttle:5,1'])
+    ->name('register.store');
 
 Route::view('forgot-password', 'pages::auth.forgot-password')->name('password.request');
 Route::post('forgot-password', [PasswordResetOtpController::class, 'send'])
@@ -31,6 +41,11 @@ Route::post('email/verification-otp', [EmailVerificationOtpController::class, 's
 Route::post('email/verification-otp/verify', [EmailVerificationOtpController::class, 'verify'])
     ->middleware('throttle:5,1')
     ->name('verification.otp.verify');
+Route::post('email/verification-otp/cancel', [EmailVerificationOtpController::class, 'cancelRegistration'])
+    ->name('registration.cancel');
+Route::get('teacher-account/verify/{user}', [UserManagementController::class, 'verifyCreatedTeacher'])
+    ->middleware('signed')
+    ->name('teacher-account.verify');
 
 Route::middleware(['guest', 'throttle:two-factor'])->group(function () {
     Route::post('two-factor-challenge/email', [LoginTwoFactorOtpController::class, 'send'])
@@ -43,9 +58,19 @@ Route::post('logout', [AccountActivityController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
 
+Route::middleware(['auth', 'role:teacher'])->group(function () {
+    Route::get('teacher/complete-profile', [TeacherProfileController::class, 'edit'])
+        ->name('teacher.profile.edit');
+    Route::put('teacher/complete-profile', [TeacherProfileController::class, 'update'])
+        ->name('teacher.profile.update');
+});
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('account-activity', [AccountActivityController::class, 'touch'])
         ->name('account-activity.touch');
+    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('notifications/{notification}/read', [NotificationController::class, 'markAsRead'])
+        ->name('notifications.read');
 
     Route::get('dashboard', function () {
         if (auth()->user()->role === 'student') {
@@ -105,7 +130,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware('role:guidance_counselor')->prefix('admin')->name('admin.')->group(function () {
         Route::get('users', [UserManagementController::class, 'index'])->name('users.index');
+        Route::post('teachers', [UserManagementController::class, 'createTeacher'])->name('teachers.store');
+        Route::post('teachers/import', [UserManagementController::class, 'importTeachers'])->name('teachers.import');
+        Route::get('teachers/{user}/edit', [UserManagementController::class, 'editTeacher'])->name('teachers.edit');
+        Route::put('teachers/{user}', [UserManagementController::class, 'updateTeacher'])->name('teachers.update');
         Route::post('students/import', [UserManagementController::class, 'importStudents'])->name('students.import');
+        Route::get('data-backup', [DataBackupController::class, 'download'])->name('data-backup.download');
+        Route::post('data-backup/import', [DataBackupController::class, 'import'])->name('data-backup.import');
         Route::post('users/{user}/status', [UserManagementController::class, 'updateStatus'])
             ->name('users.status');
     });
@@ -114,6 +145,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('appointments', [AppointmentController::class, 'index'])->name('appointments.index');
         Route::post('appointments', [AppointmentController::class, 'store'])->name('appointments.store');
         Route::post('appointments/{appointment}/accept', [AppointmentController::class, 'accept'])->name('appointments.accept');
+        Route::post('appointments/{appointment}/referral-confirmation', [AppointmentController::class, 'confirmReferralProposal'])
+            ->middleware('role:student')
+            ->name('appointments.referral.confirm');
+        Route::post('appointments/{appointment}/referral-suggestion', [AppointmentController::class, 'suggestReferralTime'])
+            ->middleware('role:student')
+            ->name('appointments.referral.suggest');
         Route::post('guidance/referrals/{referral}/appoint', [AppointmentController::class, 'appointFromReferral'])
             ->middleware('role:guidance_counselor')
             ->name('guidance.referrals.appoint');
@@ -143,6 +180,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('teacher.referrals.cancel');
     Route::patch('teacher/referrals/{slipAssignment}/notes', [SlipSubmissionController::class, 'updateTeacherReferralNotes'])
         ->name('teacher.referrals.notes');
+    Route::patch('guidance/referrals/{slipAssignment}/private-notes', [SlipSubmissionController::class, 'updateGuidanceReferralNotes'])
+        ->middleware('role:guidance_counselor')
+        ->name('guidance.referrals.private-notes');
     Route::post('student/slip-requests/{slip}', [SlipSubmissionController::class, 'requestForm'])
         ->name('student.slip-requests.store');
     Route::post('guidance/referrals/{referral}/issue/{slip}', [SlipSubmissionController::class, 'issueFollowup'])
@@ -175,11 +215,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('slips.submissions.docx');
     Route::get('slip-submissions/{slipSubmission}/preview', [SlipSubmissionController::class, 'previewPdf'])
         ->name('slips.submissions.preview-pdf');
+    Route::get('slip-submissions/{slipSubmission}/system-preview', [SlipSubmissionController::class, 'systemPreview'])
+        ->name('slips.submissions.system-preview');
     Route::get('slip-submissions/{slipSubmission}/attachments/{attachment}', [SlipSubmissionController::class, 'attachment'])
         ->whereNumber('attachment')
         ->name('slips.submissions.attachment');
-    Route::get('cns-requests/{cnsRequest}', [CnsController::class, 'show'])->name('cns.requests.show');
-    Route::get('cns-requests/{cnsRequest}/pdf', [CnsController::class, 'pdf'])->name('cns.requests.pdf');
+    Route::get('slip-informations/{slipInformation}', [SlipInformationController::class, 'show'])->name('slip-informations.show');
+    Route::get('slip-informations/{slipInformation}/pdf', [SlipInformationController::class, 'pdf'])->name('slip-informations.pdf');
+    Route::get('slip-informations/{slipInformation}/system-preview', [SlipInformationController::class, 'systemPreview'])
+        ->name('slip-informations.system-preview');
 });
 
 require __DIR__.'/settings.php';

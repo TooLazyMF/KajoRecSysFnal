@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\SlipAssignment;
 use App\Models\SlipSubmission;
 use App\Models\StudentReference;
+use App\Support\SensitiveLookup;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -44,18 +45,22 @@ class StudentRosterImportTest extends TestCase
         ])->assertRedirect(route('guidance.dashboard'));
 
         $this->assertSame(1, StudentReference::query()->count());
-        $this->assertSame('2nd Year', StudentReference::query()->where('id_number', '1494')->value('year'));
-        $this->assertSame('BSCS', StudentReference::query()->where('id_number', '1494')->value('course'));
+        $reference = StudentReference::query()->where('id_number_lookup_hash', SensitiveLookup::hash('id_number', '1494'))->firstOrFail();
+        $this->assertSame('2nd Year', $reference->year);
+        $this->assertSame('BSCS', $reference->course);
         $this->assertTrue($student->fresh()->is_active);
         $this->assertFalse($removedStudent->fresh()->is_active);
+        $this->assertSame(
+            $reference->id_number_lookup_hash,
+            SensitiveLookup::hash('id_number', $student->id_number),
+        );
 
         $this->actingAs($counselor)
             ->get(route('admin.users.index'))
             ->assertOk()
             ->assertSeeInOrder(['BSCS', '2nd Year', 'Roderick Rod. Roderick'])
-            ->assertDontSee('Removed Student')
-            ->assertDontSee('Course not listed')
-            ->assertDontSee('Year level not listed');
+            ->assertSee('Removed Student')
+            ->assertSee('Deactivated');
 
         $cifAssignment = SlipAssignment::create([
             'assigned_by' => $teacher->id,
@@ -117,8 +122,9 @@ class StudentRosterImportTest extends TestCase
             ),
         ])->assertRedirect(route('guidance.dashboard'));
 
-        $this->assertSame('1st Year', StudentReference::query()->where('id_number', '1234')->value('year'));
-        $this->assertSame('BCAED', StudentReference::query()->where('id_number', '1234')->value('course'));
+        $reference = StudentReference::query()->where('id_number_lookup_hash', SensitiveLookup::hash('id_number', '1234'))->firstOrFail();
+        $this->assertSame('1st Year', $reference->year);
+        $this->assertSame('BCAED', $reference->course);
     }
 
     public function test_roster_import_rejects_student_rows_without_a_year_level(): void

@@ -146,7 +146,7 @@ class SlipPdfGenerator
         $value = $data[$field['key']] ?? null;
 
         if ($field['type'] === 'checkboxes') {
-            $selected = is_array($value) ? $value : [];
+            $selected = is_array($value) ? $value : (filled($value) ? [$value] : []);
 
             foreach ($selected as $option) {
                 $position = $field['pdf_options'][$option] ?? null;

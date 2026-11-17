@@ -33,8 +33,9 @@ class AccountSessionLog extends Model
     protected function casts(): array
     {
         return [
-            'latitude' => 'decimal:7',
-            'longitude' => 'decimal:7',
+            'device_name' => 'encrypted',
+            'latitude' => 'encrypted',
+            'longitude' => 'encrypted',
             'logged_in_at' => 'immutable_datetime',
             'last_activity_at' => 'immutable_datetime',
             'logged_out_at' => 'immutable_datetime',

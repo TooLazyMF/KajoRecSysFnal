@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
+use App\Casts\EncryptedJsonArrayObject;
+use App\Casts\EncryptedLookup;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Casts\AsArrayObject;
 use Illuminate\Database\Eloquent\Model;
 
 #[Fillable(['id_number', 'name', 'gender', 'year', 'course', 'source_data'])]
@@ -35,7 +36,12 @@ class StudentReference extends Model
     protected function casts(): array
     {
         return [
-            'source_data' => AsArrayObject::class,
+            'id_number' => EncryptedLookup::class,
+            'name' => 'encrypted',
+            'gender' => 'encrypted',
+            'year' => 'encrypted',
+            'course' => 'encrypted',
+            'source_data' => EncryptedJsonArrayObject::class,
         ];
     }
 }

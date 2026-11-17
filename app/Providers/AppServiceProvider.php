@@ -2,9 +2,13 @@
 
 namespace App\Providers;
 
+use App\Cache\EncryptedDatabaseStore;
+use App\Session\EncryptedDatabaseSessionHandler;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -32,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
     protected function configureDefaults(): void
     {
         Date::use(CarbonImmutable::class);
+        $this->configureEncryptedPersistence();
 
         DB::prohibitDestructiveCommands(
             app()->isProduction(),
@@ -42,9 +47,40 @@ class AppServiceProvider extends ServiceProvider
                 ->mixedCase()
                 ->letters()
                 ->numbers()
-                ->symbols()
                 ->uncompromised()
             : null,
         );
+    }
+
+    private function configureEncryptedPersistence(): void
+    {
+        Cache::extend('database', function ($app, array $config) {
+            $connection = $app['db']->connection($config['connection'] ?? null);
+            $store = new EncryptedDatabaseStore(
+                $connection,
+                $config['table'] ?? 'cache',
+                $config['prefix'] ?? config('cache.prefix'),
+                $config['lock_table'] ?? 'cache_locks',
+                $config['lock_lottery'] ?? [2, 100],
+                $config['lock_timeout'] ?? 86400,
+                $config['serializable_classes'] ?? config('cache.serializable_classes'),
+            );
+            $store->setLockConnection($app['db']->connection(
+                $config['lock_connection'] ?? $config['connection'] ?? null
+            ));
+
+            return $app['cache']->repository($store, $config);
+        });
+
+        Session::extend('database', function ($app) {
+            $connection = $app['db']->connection(config('session.connection'));
+
+            return new EncryptedDatabaseSessionHandler(
+                $connection,
+                config('session.table'),
+                (int) config('session.lifetime'),
+                $app,
+            );
+        });
     }
 }

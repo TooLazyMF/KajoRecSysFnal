@@ -2,23 +2,34 @@
     $admission = $referral->followups->firstWhere('slip', 'class-admission-slip');
     $steps = [
         [
-            'title' => 'Referral sent to student',
-            'detail' => 'Teacher: '.($referral->assignedBy?->name ?? 'Unknown').', student: '.($referral->student?->name ?? 'Unknown').', sent: '.($referral->created_at?->format('M j, Y g:i A') ?? 'Time unavailable'),
+            'title' => 'Referral sent to Guidance and student',
+            'detail' => 'Teacher: '.($referral->assignedBy?->name ?? 'Unknown').', sent to Guidance and student: '.($referral->student?->name ?? 'Unknown').', sent: '.($referral->completed_at?->format('M j, Y g:i A') ?? $referral->created_at?->format('M j, Y g:i A') ?? 'Time unavailable'),
             'complete' => true,
         ],
         [
-            'title' => 'Student sent referral to Guidance',
-            'detail' => $referral->completed_at ? 'Student: '.($referral->student?->name ?? 'Unknown').', sent: '.$referral->completed_at->format('M j, Y g:i A') : 'Waiting for the student to submit the referral.',
-            'complete' => (bool) $referral->completed_at,
+            'title' => 'Referral received by Guidance',
+            'detail' => $referral->completed_at ? 'Guidance can review the referral since '.$referral->completed_at->format('M j, Y g:i A').'.' : 'Waiting for the referral to reach Guidance.',
+            'complete' => $referral->status !== 'pending',
         ],
         [
-            'title' => 'Referral received by Guidance',
-            'detail' => $admission ? 'Counselor: '.($admission->assignedBy?->name ?? 'Unknown').', received: '.($admission->created_at?->format('M j, Y g:i A') ?? 'Time unavailable') : 'Waiting for Guidance to receive the referral.',
-            'complete' => (bool) $admission,
+            'title' => 'Guidance review',
+            'detail' => $referral->approved_at ? 'Guidance Counselor approved the referral: '.$referral->approved_at->format('M j, Y g:i A') : 'Waiting for the counselor to review the referral.',
+            'complete' => (bool) $referral->approved_at,
         ],
     ];
 
     if ($admission) {
+        $counseling = $referral->appointments->sortByDesc('created_at')->first();
+        if ($counseling) {
+            $steps[] = [
+                'title' => 'Counseling session',
+                'detail' => $counseling->status === 'done'
+                    ? 'Counseling completed on '.($counseling->completed_at?->format('M j, Y g:i A') ?? 'the recorded completion date').'. Guidance may now release the Class Admission result.'
+                    : 'A counseling session is ongoing. The Class Admission result remains pending until the session is completed.',
+                'complete' => $counseling->status === 'done',
+            ];
+        }
+
         $steps = [...$steps,
             [
                 'title' => 'Class Admission form sent to student',
@@ -31,14 +42,9 @@
                 'complete' => (bool) $admission->completed_at,
             ],
             [
-                'title' => 'Counselor sent completed result to student',
-                'detail' => $admission->approved_at ? 'Counselor: '.($admission->approver?->name ?? 'Unknown').', student: '.($referral->student?->name ?? 'Unknown').', sent: '.$admission->approved_at->format('M j, Y g:i A') : 'Waiting for Guidance to issue and send the result.',
+                'title' => 'Counselor sent completed result to teacher',
+                'detail' => $admission->approved_at ? 'Counselor: '.($admission->approver?->name ?? 'Unknown').', sent to teacher: '.($referral->assignedBy?->name ?? 'Unknown').', sent: '.$admission->approved_at->format('M j, Y g:i A') : 'Waiting for Guidance to issue and send the result.',
                 'complete' => (bool) $admission->approved_at,
-            ],
-            [
-                'title' => 'Student sent result to teacher',
-                'detail' => $admission->student_sent_to_teacher_at ? 'Student: '.($referral->student?->name ?? 'Unknown').', sent: '.$admission->student_sent_to_teacher_at->format('M j, Y g:i A') : 'Waiting for the student to forward the approved result.',
-                'complete' => (bool) $admission->student_sent_to_teacher_at,
             ],
             [
                 'title' => 'Result received by teacher',

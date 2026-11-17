@@ -2,8 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Models\StudentReference;
 use App\Models\User;
+use App\Support\SensitiveLookup;
+use App\Notifications\EmailOtp;
+use App\Notifications\TeacherAccountCreated;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 class UserManagementTest extends TestCase
@@ -23,6 +31,13 @@ class UserManagementTest extends TestCase
             'name' => 'Student Account',
             'role' => 'student',
         ]);
+        StudentReference::create([
+            'id_number' => $student->id_number,
+            'name' => $student->name,
+            'gender' => $student->gender,
+            'year' => '1st Year',
+            'course' => 'BSCS',
+        ]);
         $this->assertTrue($counselor->is_active);
 
         $response = $this->actingAs($counselor)->get(route('admin.users.index'));
@@ -31,6 +46,7 @@ class UserManagementTest extends TestCase
             ->assertSee('Manage Users')
             ->assertSee('Teacher Account')
             ->assertSee('Student Account')
+            ->assertSee('Create Teacher Account')
             ->assertSee('Deactivate')
             ->assertSee('Mark as graduate');
 
@@ -62,6 +78,236 @@ class UserManagementTest extends TestCase
             ->assertSessionHasErrors('action');
 
         $this->assertFalse($teacher->fresh()->is_graduated);
+    }
+
+    public function test_counselor_can_edit_teacher_before_first_login_but_not_afterward(): void
+    {
+        $counselor = $this->createUser(['role' => 'guidance_counselor']);
+        $teacher = $this->createUser([
+            'name' => 'Teacher Account',
+            'email' => 'teacher@example.com',
+            'role' => 'teacher',
+            'password' => 'TeacherPassword123',
+            'email_verified_at' => now(),
+            'is_active' => true,
+        ]);
+        $this->actingAs($counselor)
+            ->get(route('admin.users.index'))
+            ->assertSee('Edit');
+        $this->actingAs($counselor)
+            ->get(route('admin.teachers.edit', $teacher))
+            ->assertOk();
+
+        $this->actingAs($counselor)
+            ->put(route('admin.teachers.update', $teacher), [
+                'first_name' => 'Updated',
+                'last_name' => 'Teacher',
+                'middle_initial' => 'U.',
+                'teacher_id' => $teacher->id_number,
+                'email' => $teacher->email,
+                'counselor_password' => 'password',
+            ])
+            ->assertRedirect(route('admin.users.index'));
+
+        $teacher->refresh();
+        $this->assertSame('Updated U. Teacher', $teacher->name);
+
+        auth()->guard('web')->logout();
+        $this->post(route('login.store'), [
+            'email' => $teacher->name,
+            'password' => 'TeacherPassword123',
+        ])->assertRedirect(route('teacher.dashboard'));
+        $this->assertDatabaseHas('account_session_logs', ['user_id' => $teacher->id]);
+
+        $this->actingAs($counselor)
+            ->get(route('admin.users.index'))
+            ->assertSee('Locked after first login')
+            ->assertDontSee(route('admin.teachers.edit', $teacher));
+        $this->actingAs($counselor)
+            ->get(route('admin.teachers.edit', $teacher))
+            ->assertForbidden();
+        $this->actingAs($counselor)
+            ->put(route('admin.teachers.update', $teacher), [
+                'first_name' => 'Changed',
+                'last_name' => 'Again',
+                'middle_initial' => 'C.',
+                'teacher_id' => $teacher->id_number,
+                'email' => $teacher->email,
+                'counselor_password' => 'password',
+            ])
+            ->assertForbidden();
+
+        $this->assertSame('Updated U. Teacher', $teacher->fresh()->name);
+    }
+
+    public function test_guidance_can_create_teacher_accounts_and_teacher_must_verify_email_to_activate(): void
+    {
+        Notification::fake();
+        $counselor = $this->createUser(['role' => 'guidance_counselor']);
+
+        $this->actingAs($counselor)
+            ->get(route('admin.users.index'))
+            ->assertOk()
+            ->assertSee('id="teacher-approval-modal"', false)
+            ->assertSee('name="counselor_password"', false)
+            ->assertSee('aria-label="Show password"', false)
+            ->assertSee('data-toggle-password', false);
+
+        $this->actingAs($counselor)
+            ->post(route('admin.teachers.store'), [
+                'first_name' => 'New',
+                'last_name' => 'Teacher',
+                'middle_initial' => 'T.',
+                'teacher_id' => 'TEACHER-NEW-001',
+                'email' => 'new.teacher@gmail.com',
+                'password' => 'initialPassword123',
+                'password_confirmation' => 'initialPassword123',
+                'counselor_password' => 'wrong-password',
+            ])
+            ->assertRedirect(route('admin.users.index'))
+            ->assertSessionHasErrors('counselor_password');
+
+        $this->assertDatabaseMissing('users', ['name_lookup_hash' => SensitiveLookup::hash('name', 'New Teacher')]);
+
+        $this->actingAs($counselor)
+            ->post(route('admin.teachers.store'), [
+                'first_name' => 'New',
+                'last_name' => 'Teacher',
+                'middle_initial' => 'T.',
+                'teacher_id' => 'TEACHER-NEW-001',
+                'email' => 'new.teacher@gmail.com',
+                'password' => 'initialPassword123',
+                'password_confirmation' => 'initialPassword123',
+                'counselor_password' => 'password',
+            ])
+            ->assertRedirect(route('admin.users.index'))
+            ->assertSessionHas('status');
+
+        $teacher = User::query()
+            ->where('name_lookup_hash', SensitiveLookup::hash('name', 'New T. Teacher'))
+            ->firstOrFail();
+        $this->assertSame('teacher', $teacher->role);
+        $this->assertSame('new.teacher@gmail.com', $teacher->email);
+        $this->assertSame('TEACHER-NEW-001', $teacher->id_number);
+        $this->assertNull($teacher->gender);
+        $this->assertFalse($teacher->hasVerifiedEmail());
+        $this->assertFalse($teacher->is_active);
+        $this->assertTrue(Hash::check('initialPassword123', $teacher->password));
+        $this->assertFalse($teacher->must_change_password);
+        Notification::assertSentTo($teacher, TeacherAccountCreated::class);
+
+        $verificationUrl = URL::temporarySignedRoute(
+            'teacher-account.verify',
+            now()->addHour(),
+            ['user' => $teacher->id],
+        );
+
+        $this->get($verificationUrl)
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('status');
+
+        $this->assertTrue($teacher->fresh()->hasVerifiedEmail());
+        $this->assertTrue($teacher->fresh()->is_active);
+    }
+
+    public function test_teacher_must_complete_profile_and_verify_email_before_dashboard_access(): void
+    {
+        Notification::fake();
+
+        $teacher = User::forceCreate([
+            'name' => 'Teacher To Setup',
+            'email' => null,
+            'id_number' => null,
+            'gender' => null,
+            'role' => 'teacher',
+            'password' => 'initial-password',
+            'must_change_password' => true,
+        ]);
+
+        $this->post(route('login.store'), [
+            'email' => $teacher->name,
+            'password' => 'initial-password',
+        ])->assertRedirect(route('teacher.profile.edit'));
+
+        $this->assertAuthenticatedAs($teacher);
+
+        $this->get(route('teacher.dashboard'))
+            ->assertRedirect(route('teacher.profile.edit'));
+
+        $this->get(route('teacher.profile.edit'))
+            ->assertOk()
+            ->assertSee('Complete your teacher account')
+            ->assertSee('Teacher ID number')
+            ->assertSee('id="teacher-profile-setup-modal"', false)
+            ->assertSee('showModal()', false);
+
+        $this->put(route('teacher.profile.update'), [
+            'email' => 'new.teacher@example.com',
+            'id_number' => 'TEACHER-001',
+            'password' => 'initial-password',
+            'password_confirmation' => 'initial-password',
+        ])->assertSessionHasErrors('password');
+
+        $this->assertNull($teacher->fresh()->email);
+        $this->assertTrue($teacher->fresh()->must_change_password);
+
+        $this->put(route('teacher.profile.update'), [
+            'email' => 'new.teacher@example.com',
+            'id_number' => 'TEACHER-001',
+            'password' => 'updated-teacher-password',
+            'password_confirmation' => 'updated-teacher-password',
+        ])->assertRedirect(route('verification.notice'));
+
+        Notification::assertSentTo($teacher, EmailOtp::class);
+
+        $teacher->refresh();
+        $this->assertSame('new.teacher@example.com', $teacher->email);
+        $this->assertSame('TEACHER-001', $teacher->id_number);
+        $this->assertFalse($teacher->hasVerifiedEmail());
+        $this->assertFalse($teacher->must_change_password);
+        $this->assertTrue(Hash::check('updated-teacher-password', $teacher->password));
+        $this->assertFalse(Hash::check('initial-password', $teacher->password));
+
+        $this->get(route('verification.notice'))
+            ->assertOk()
+            ->assertSee('id="teacher-email-verification-modal"', false)
+            ->assertSee('showModal()', false)
+            ->assertSee('Enter the 6-digit code sent to your email address');
+
+        $this->get(route('teacher.dashboard'))
+            ->assertRedirect(route('verification.notice'));
+
+        Cache::put(
+            'email-otp:email-verification:'.$teacher->id,
+            ['code_hash' => Hash::make('123456')],
+            now()->addMinutes(30),
+        );
+
+        $this->post(route('verification.otp.verify'), ['otp' => '123456'])
+            ->assertRedirect(route('teacher.dashboard', absolute: false).'?verified=1');
+
+        $this->assertTrue($teacher->fresh()->hasVerifiedEmail());
+    }
+
+    public function test_teacher_can_log_in_using_name_after_counselor_created_account_is_verified(): void
+    {
+        $teacher = User::forceCreate([
+            'name' => 'Verified Teacher',
+            'email' => 'verified.teacher@example.com',
+            'id_number' => 'TEACHER-VERIFIED-001',
+            'gender' => null,
+            'role' => 'teacher',
+            'password' => 'TeacherPassword123',
+            'is_active' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        $this->post(route('login.store'), [
+            'email' => $teacher->name,
+            'password' => 'TeacherPassword123',
+        ])->assertRedirect(route('teacher.dashboard'));
+
+        $this->assertAuthenticatedAs($teacher);
     }
 
     public function test_students_cannot_access_user_management(): void
