@@ -20,9 +20,19 @@ runtime does not include Composer, so deploy it as a Docker web service instead.
    - `CACHE_STORE=database`
    - `QUEUE_CONNECTION=database`
    - `LOG_CHANNEL=stderr`
+   - `MAIL_MAILER=brevo`
+   - `BREVO_API_KEY=<Brevo API v3 key>`
+   - `MAIL_FROM_ADDRESS=<verified sender email>`
+   - `MAIL_FROM_NAME=KajoRec`
 4. Deploy. The container installs PHP dependencies with Composer, builds the
    frontend assets, runs database migrations, and starts Laravel on Render's
    assigned port.
+
+Brevo delivery uses its HTTPS API, not SMTP. Render Free web services block
+outbound SMTP ports 25, 465, and 587, so configuring Brevo SMTP will not send
+email from a Free service. Create an API key in Brevo and verify the sender
+address before deploying. Keep the API key in Render's Environment settings;
+do not commit it to the repository.
 
 Do not use the local SQLite database for production data on Render's ephemeral
 filesystem. Files uploaded to the local storage disk are also ephemeral; use

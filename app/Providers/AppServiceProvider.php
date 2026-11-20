@@ -8,9 +8,13 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use InvalidArgumentException;
+use Symfony\Component\HttpClient\HttpClient;
+use Symfony\Component\Mailer\Bridge\Brevo\Transport\BrevoApiTransport;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,6 +32,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureBrevoMailer();
     }
 
     /**
@@ -81,6 +86,19 @@ class AppServiceProvider extends ServiceProvider
                 (int) config('session.lifetime'),
                 $app,
             );
+        });
+    }
+
+    private function configureBrevoMailer(): void
+    {
+        Mail::extend('brevo', static function (array $config): BrevoApiTransport {
+            $apiKey = $config['key'] ?? null;
+
+            if (! is_string($apiKey) || $apiKey === '') {
+                throw new InvalidArgumentException('Set BREVO_API_KEY to use the Brevo mailer.');
+            }
+
+            return new BrevoApiTransport($apiKey, HttpClient::create());
         });
     }
 }
