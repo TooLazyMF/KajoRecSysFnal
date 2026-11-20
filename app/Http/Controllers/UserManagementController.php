@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Concerns\PasswordValidationRules;
+use App\Models\RosterImportState;
 use App\Models\SlipSubmission;
 use App\Models\StudentReference;
 use App\Models\TeacherReference;
@@ -96,7 +97,7 @@ class UserManagementController extends Controller
             ]);
         }
 
-        $isUpdate = StudentReference::query()->exists();
+        $isUpdate = RosterImportState::isImported(RosterImportState::STUDENTS);
 
         DB::transaction(function () use ($rows): void {
             $ids = array_values(array_filter(array_map(
@@ -147,6 +148,8 @@ class UserManagementController extends Controller
                     ->whereKey($missingUserIds)
                     ->update(['is_active' => false, 'updated_at' => now()]);
             }
+
+            RosterImportState::markImported(RosterImportState::STUDENTS);
         });
 
         return to_route('guidance.dashboard')->with('status', count($rows).($isUpdate
@@ -228,7 +231,7 @@ class UserManagementController extends Controller
             ]);
         }
 
-        $isUpdate = TeacherReference::query()->exists();
+        $isUpdate = RosterImportState::isImported(RosterImportState::TEACHERS);
 
         DB::transaction(function () use ($rows): void {
             TeacherReference::query()->upsert(
@@ -239,6 +242,8 @@ class UserManagementController extends Controller
             TeacherReference::query()
                 ->whereNotIn('name_lookup_hash', array_keys($rows))
                 ->delete();
+
+            RosterImportState::markImported(RosterImportState::TEACHERS);
         });
 
         return to_route('guidance.dashboard')->with('status', count($rows).($isUpdate
@@ -481,12 +486,22 @@ class UserManagementController extends Controller
             ->withExists(['accountSessionLogs as has_logged_in'])
             ->orderBy('id')
             ->paginate(25);
-        $teacherReferences = TeacherReference::query()
-            ->get(['id', 'name'])
-            ->sortBy(fn (TeacherReference $reference) => mb_strtolower($reference->name))
-            ->values();
+        $hasImportedTeacherFile = RosterImportState::isImported(RosterImportState::TEACHERS);
+        $teacherReferences = $hasImportedTeacherFile
+            ? TeacherReference::query()
+                ->get(['id', 'name'])
+                ->sortBy(fn (TeacherReference $reference) => mb_strtolower($reference->name))
+                ->values()
+            : collect();
 
-        return view('admin.users', compact('students', 'studentReferences', 'studentCifs', 'teachers', 'teacherReferences'));
+        return view('admin.users', compact(
+            'students',
+            'studentReferences',
+            'studentCifs',
+            'teachers',
+            'teacherReferences',
+            'hasImportedTeacherFile',
+        ));
     }
 
     public function createTeacher(Request $request): RedirectResponse
@@ -515,17 +530,21 @@ class UserManagementController extends Controller
         $validated = $validator->validated();
         $teacherName = trim($validated['first_name'].' '.$validated['middle_initial'].' '.$validated['last_name']);
 
-        if (TeacherReference::query()->exists()) {
-            $nameLookupHash = SensitiveLookup::hash(
-                'name',
-                TeacherReference::normalizeName($teacherName),
-            );
+        if (! RosterImportState::isImported(RosterImportState::TEACHERS)) {
+            return back()
+                ->withErrors(['first_name' => 'Import the teacher list before creating teacher accounts.'])
+                ->withInput($request->except(['password', 'counselor_password']));
+        }
 
-            if (! TeacherReference::query()->where('name_lookup_hash', $nameLookupHash)->exists()) {
-                return back()
-                    ->withErrors(['first_name' => 'The teacher name must match a name in the imported teacher list.'])
-                    ->withInput($request->except(['password', 'counselor_password']));
-            }
+        $nameLookupHash = SensitiveLookup::hash(
+            'name',
+            TeacherReference::normalizeName($teacherName),
+        );
+
+        if (! TeacherReference::query()->where('name_lookup_hash', $nameLookupHash)->exists()) {
+            return back()
+                ->withErrors(['first_name' => 'The teacher name must match a name in the imported teacher list.'])
+                ->withInput($request->except(['password', 'counselor_password']));
         }
 
         if (! $counselor instanceof User

@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\RosterImportState;
 use App\Models\SlipAssignment;
 use App\Models\SlipInformation;
 use App\Models\SlipSubmission;
 use App\Models\StudentReference;
-use App\Models\TeacherReference;
 use App\Models\User;
 use App\Notifications\WorkflowActivity;
 use App\Services\AppointmentAvailability;
@@ -255,8 +255,8 @@ class SlipSubmissionController extends Controller
             'archivedStudentsCount' => User::query()->where('role', 'student')->where(function ($query) {
                 $query->where('is_active', false)->orWhere('is_graduated', true);
             })->count(),
-            'hasImportedStudentFile' => StudentReference::query()->exists(),
-            'hasImportedTeacherFile' => TeacherReference::query()->exists(),
+            'hasImportedStudentFile' => RosterImportState::isImported(RosterImportState::STUDENTS),
+            'hasImportedTeacherFile' => RosterImportState::isImported(RosterImportState::TEACHERS),
             'todayAppointmentsCount' => Appointment::query()->whereDate('scheduled_at', today())->count(),
             'todayAppointments' => Appointment::query()
                 ->with('requester')

@@ -93,9 +93,15 @@
                     <div>
                         <h2 class="text-xl font-bold">Create Teacher Account</h2>
                         <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                            Enter the teacher's details. KajoRec will email the teacher a verification link before activating the account. If a teacher list is imported, the account name must match a name on that list.
+                            Enter the teacher's details. KajoRec will email the teacher a verification link before activating the account. Their name must match the imported teacher list.
                         </p>
-                        @if ($teacherReferences->isNotEmpty())
+                        @unless ($hasImportedTeacherFile)
+                            <p role="status" class="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                                Import the teacher list before creating teacher accounts.
+                                <a href="{{ route('guidance.dashboard') }}#teacher-import" class="font-semibold underline">Import teacher list</a>
+                            </p>
+                        @endunless
+                        @if ($hasImportedTeacherFile && $teacherReferences->isNotEmpty())
                             <details class="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/30">
                                 <summary class="cursor-pointer font-semibold text-blue-900 dark:text-blue-200">View imported teacher names ({{ $teacherReferences->count() }})</summary>
                                 <ul class="mt-2 max-h-48 list-inside list-disc space-y-1 overflow-y-auto text-neutral-700 dark:text-neutral-300">
@@ -104,9 +110,9 @@
                                     @endforeach
                                 </ul>
                             </details>
-                        @else
+                        @elseif ($hasImportedTeacherFile)
                             <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-                                <a href="{{ route('guidance.dashboard') }}#teacher-import" class="font-semibold text-blue-700 underline dark:text-blue-300">Import a teacher name list</a> to use it as an account-creation reference.
+                                The imported teacher list is empty. Import a non-empty list before creating teacher accounts.
                             </p>
                         @endif
                     </div>

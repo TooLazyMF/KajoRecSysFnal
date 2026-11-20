@@ -19,7 +19,7 @@ class DataBackupService
 {
     private const FORMAT = 'kajorec-database-backup';
 
-    private const VERSION = 3;
+    private const VERSION = 4;
 
     private const DATA_FILE = 'database.json';
 
@@ -33,6 +33,7 @@ class DataBackupService
         'account_session_logs',
         'passkeys',
         'teacher_references',
+        'roster_import_states',
     ];
 
     private const MAX_ARCHIVE_ENTRIES = 10001;
@@ -230,7 +231,7 @@ class DataBackupService
 
         if (! is_array($payload)
             || ($payload['format'] ?? null) !== self::FORMAT
-            || ! in_array($payload['version'] ?? null, [1, 2, self::VERSION], true)
+            || ! in_array($payload['version'] ?? null, [1, 2, 3, self::VERSION], true)
             || ! isset($payload['backup_id'])
             || ! Str::isUuid($payload['backup_id'])
             || ! isset($payload['schema'], $payload['tables'], $payload['files'], $payload['missing_files'])
@@ -245,6 +246,8 @@ class DataBackupService
             $payload = $this->normalizeVersionOnePayload($payload);
         } elseif ($payload['version'] === 2) {
             $payload = $this->normalizeVersionTwoPayload($payload);
+        } elseif ($payload['version'] === 3) {
+            $payload = $this->normalizeVersionThreePayload($payload);
         }
 
         if (array_keys($payload['tables']) !== self::TABLES
@@ -370,6 +373,8 @@ class DataBackupService
 
         $tables['teacher_references'] = [];
         $schema['teacher_references'] = Schema::getColumnListing('teacher_references');
+        $tables['roster_import_states'] = [];
+        $schema['roster_import_states'] = Schema::getColumnListing('roster_import_states');
 
         $payload['version'] = self::VERSION;
         $payload['tables'] = $tables;
@@ -382,6 +387,17 @@ class DataBackupService
     {
         $payload['tables']['teacher_references'] ??= [];
         $payload['schema']['teacher_references'] ??= Schema::getColumnListing('teacher_references');
+        $payload['tables']['roster_import_states'] = [];
+        $payload['schema']['roster_import_states'] = Schema::getColumnListing('roster_import_states');
+        $payload['version'] = self::VERSION;
+
+        return $payload;
+    }
+
+    private function normalizeVersionThreePayload(array $payload): array
+    {
+        $payload['tables']['roster_import_states'] = [];
+        $payload['schema']['roster_import_states'] = Schema::getColumnListing('roster_import_states');
         $payload['version'] = self::VERSION;
 
         return $payload;
@@ -545,6 +561,10 @@ class DataBackupService
 
         $this->mergeTable($backupId, 'teacher_references', $payload['tables']['teacher_references'], [], $idMaps, $filePathMap, $added, [
             ['name_lookup_hash'],
+        ]);
+
+        $this->mergeTable($backupId, 'roster_import_states', $payload['tables']['roster_import_states'], [], $idMaps, $filePathMap, $added, [
+            ['roster_type'],
         ]);
 
         $this->mergeTable($backupId, 'account_session_logs', $payload['tables']['account_session_logs'], [

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\RosterImportState;
 use App\Models\TeacherReference;
 use App\Models\User;
 use App\Support\SensitiveLookup;
@@ -29,6 +30,7 @@ class TeacherRosterImportTest extends TestCase
             ->assertSessionHas('status');
 
         $this->assertSame(2, TeacherReference::query()->count());
+        $this->assertTrue(RosterImportState::isImported(RosterImportState::TEACHERS));
 
         $this->actingAs($counselor)->post(route('admin.teachers.import'), [
             'teacher_file' => UploadedFile::fake()->createWithContent(
@@ -80,6 +82,40 @@ class TeacherRosterImportTest extends TestCase
         $this->assertDatabaseHas('users', [
             'id_number_lookup_hash' => SensitiveLookup::hash('id_number', 'TEACHER-NEW-001'),
         ]);
+    }
+
+    public function test_teacher_accounts_cannot_be_created_from_legacy_rows_until_the_list_is_reimported(): void
+    {
+        $counselor = User::factory()->create(['role' => 'guidance_counselor']);
+        TeacherReference::create([
+            'name' => 'Legacy Teacher',
+            'name_lookup_hash' => SensitiveLookup::hash(
+                'name',
+                TeacherReference::normalizeName('Legacy Teacher'),
+            ),
+        ]);
+
+        $this->actingAs($counselor)
+            ->from(route('admin.users.index'))
+            ->post(route('admin.teachers.store'), [
+                'first_name' => 'Legacy',
+                'last_name' => 'Teacher',
+                'middle_initial' => 'L.',
+                'teacher_id' => 'TEACHER-LEGACY-001',
+                'email' => 'legacy.teacher@example.com',
+                'password' => 'initialPassword123',
+                'password_confirmation' => 'initialPassword123',
+                'counselor_password' => 'password',
+            ])
+            ->assertRedirect(route('admin.users.index'))
+            ->assertSessionHasErrors([
+                'first_name' => 'Import the teacher list before creating teacher accounts.',
+            ]);
+
+        $this->assertDatabaseMissing('users', [
+            'id_number_lookup_hash' => SensitiveLookup::hash('id_number', 'TEACHER-LEGACY-001'),
+        ]);
+        $this->assertFalse(RosterImportState::isImported(RosterImportState::TEACHERS));
     }
 
     public function test_teacher_name_import_rejects_files_with_more_than_one_column(): void

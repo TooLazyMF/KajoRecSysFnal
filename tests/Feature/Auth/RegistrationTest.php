@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\RosterImportState;
 use App\Models\StudentReference;
 use App\Models\User;
 use App\Notifications\EmailOtp;
@@ -308,6 +309,34 @@ class RegistrationTest extends TestCase
         ]);
     }
 
+    public function test_legacy_student_rows_do_not_enable_registration_without_a_new_import(): void
+    {
+        Notification::fake();
+        StudentReference::create([
+            'id_number' => 'STUDENT-LEGACY',
+            'name' => 'Jane Doe',
+            'gender' => 'female',
+        ]);
+
+        $this->get(route('register'))
+            ->assertOk()
+            ->assertSee('The guidance counselor has not imported the student list yet.');
+
+        $this->from(route('home'))->post(route('register.store'), [
+            'first_name' => 'Jane',
+            'last_name' => 'Doe',
+            'id_number' => 'STUDENT-LEGACY',
+            'gender' => 'female',
+            'email' => 'legacy@example.com',
+            'password' => 'RegistrationPass123',
+            'password_confirmation' => 'RegistrationPass123',
+        ])->assertRedirect(route('home'))
+            ->assertSessionHasErrors('id_number');
+
+        Notification::assertNothingSent();
+        $this->assertFalse(RosterImportState::isImported(RosterImportState::STUDENTS));
+    }
+
     private function createStudentReference(string $idNumber, string $name, string $gender): void
     {
         StudentReference::create([
@@ -315,6 +344,7 @@ class RegistrationTest extends TestCase
             'name' => $name,
             'gender' => $gender,
         ]);
+        RosterImportState::markImported(RosterImportState::STUDENTS);
     }
 
     private function registrationOtpCode(string $email): string

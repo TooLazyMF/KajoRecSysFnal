@@ -4,6 +4,7 @@ namespace App\Actions\Fortify;
 
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
+use App\Models\RosterImportState;
 use App\Models\StudentReference;
 use App\Models\User;
 use App\Rules\UniqueEncryptedLookup;
@@ -84,7 +85,7 @@ class CreateNewUser implements CreatesNewUsers
     private function validateStudentReference(array $validated): void
     {
         $normalizedIdNumber = StudentReference::normalizeIdNumber($validated['id_number'] ?? '');
-        if (! StudentReference::query()->exists()) {
+        if (! RosterImportState::isImported(RosterImportState::STUDENTS)) {
             throw ValidationException::withMessages([
                 'id_number' => 'The guidance counselor has not imported the student list yet. Registration will be available after the student list is imported.',
             ]);

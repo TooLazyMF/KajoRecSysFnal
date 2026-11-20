@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\RosterImportState;
 use App\Models\SlipAssignment;
 use App\Models\SlipSubmission;
 use App\Models\StudentReference;
@@ -45,6 +46,7 @@ class StudentRosterImportTest extends TestCase
         ])->assertRedirect(route('guidance.dashboard'));
 
         $this->assertSame(1, StudentReference::query()->count());
+        $this->assertTrue(RosterImportState::isImported(RosterImportState::STUDENTS));
         $reference = StudentReference::query()->where('id_number_lookup_hash', SensitiveLookup::hash('id_number', '1494'))->firstOrFail();
         $this->assertSame('2nd Year', $reference->year);
         $this->assertSame('BSCS', $reference->course);

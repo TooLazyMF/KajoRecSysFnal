@@ -3,8 +3,7 @@
 namespace App\Providers;
 
 use App\Cache\EncryptedDatabaseStore;
-use App\Models\StudentReference;
-use App\Models\TeacherReference;
+use App\Models\RosterImportState;
 use App\Session\EncryptedDatabaseSessionHandler;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
@@ -39,8 +38,8 @@ class AppServiceProvider extends ServiceProvider
 
         View::composer(['welcome', 'pages::auth.register'], function (\Illuminate\View\View $view): void {
             $view->with([
-                'hasImportedStudentList' => StudentReference::query()->exists(),
-                'hasImportedTeacherList' => TeacherReference::query()->exists(),
+                'hasImportedStudentList' => RosterImportState::isImported(RosterImportState::STUDENTS),
+                'hasImportedTeacherList' => RosterImportState::isImported(RosterImportState::TEACHERS),
             ]);
         });
     }

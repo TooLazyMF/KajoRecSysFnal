@@ -25,19 +25,20 @@ runtime does not include Composer, so deploy it as a Docker web service instead.
    - `MAIL_FROM_ADDRESS=<verified sender email>`
    - `MAIL_FROM_NAME=KajoRec`
 4. Deploy. The container installs PHP dependencies with Composer, builds the
-   frontend assets, runs database migrations, and starts Laravel on Render's
-   assigned port.
-5. Once, after the first deployment, run this from the service shell to create
-   the initial guidance counselor account:
+   frontend assets, runs database migrations, seeds the initial guidance
+   counselor if one does not already exist, and starts Laravel on Render's
+   assigned port. No service shell is needed for this setup.
 
-   ```sh
-   php artisan db:seed --class=GuidanceCounselorSeeder --force
-   ```
-
-   Sign in with username `Administrator` and password `Admin`. The account
-   requires a new name, email address, and password before it can access the
-   system; verify the new email to continue. Keep the roster files private and
-   import the student list before allowing student registrations.
+   If no counselor account exists, sign in with username `Administrator` and
+   password `Admin`. The account requires a new name, email address, and
+   password before it can access the system; verify the new email to continue.
+   Existing counselor accounts are preserved.
+5. Import the complete student and teacher lists from the guidance dashboard
+   before enabling student registration or creating teacher accounts. Existing
+   roster rows are preserved during deployment but do not count as a new import;
+   each list must be imported through the dashboard after this version is
+   deployed. Student imports replace the reference roster and deactivate
+   students missing from the uploaded file, so use the complete current roster.
 
 Brevo delivery uses its HTTPS API, not SMTP. Render Free web services block
 outbound SMTP ports 25, 465, and 587, so configuring Brevo SMTP will not send

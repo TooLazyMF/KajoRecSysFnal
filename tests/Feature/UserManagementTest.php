@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\RosterImportState;
 use App\Models\StudentReference;
+use App\Models\TeacherReference;
 use App\Models\User;
 use App\Notifications\EmailOtp;
 use App\Notifications\TeacherAccountCreated;
@@ -144,6 +146,14 @@ class UserManagementTest extends TestCase
     {
         Notification::fake();
         $counselor = $this->createUser(['role' => 'guidance_counselor']);
+        TeacherReference::create([
+            'name' => 'New T. Teacher',
+            'name_lookup_hash' => SensitiveLookup::hash(
+                'name',
+                TeacherReference::normalizeName('New T. Teacher'),
+            ),
+        ]);
+        RosterImportState::markImported(RosterImportState::TEACHERS);
 
         $this->actingAs($counselor)
             ->get(route('admin.users.index'))

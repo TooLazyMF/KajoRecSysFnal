@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Appointment;
+use App\Models\RosterImportState;
 use App\Models\SlipAssignment;
 use App\Models\SlipInformation;
 use App\Models\SlipSubmission;
@@ -33,6 +34,7 @@ class DataBackupTest extends TestCase
         'account_session_logs',
         'passkeys',
         'teacher_references',
+        'roster_import_states',
     ];
 
     public function test_guidance_can_download_a_kajorec_backup_and_only_guidance_can_use_backup_routes(): void
@@ -43,6 +45,7 @@ class DataBackupTest extends TestCase
             'name' => 'Jane Teacher',
             'name_lookup_hash' => SensitiveLookup::hash('name', TeacherReference::normalizeName('Jane Teacher')),
         ]);
+        RosterImportState::markImported(RosterImportState::TEACHERS);
 
         $this->actingAs($counselor)
             ->get(route('guidance.dashboard'))
@@ -61,9 +64,10 @@ class DataBackupTest extends TestCase
         $archive->close();
 
         $this->assertSame('kajorec-database-backup', $payload['format']);
-        $this->assertSame(3, $payload['version']);
+        $this->assertSame(4, $payload['version']);
         $this->assertSame(self::TABLES, array_keys($payload['tables']));
         $this->assertCount(1, $payload['tables']['teacher_references']);
+        $this->assertCount(1, $payload['tables']['roster_import_states']);
         $this->assertNotSame('Jane Teacher', $payload['tables']['teacher_references'][0]['name']);
         $this->actingAs($teacher)
             ->get(route('admin.data-backup.download'))
@@ -264,12 +268,14 @@ class DataBackupTest extends TestCase
             'name' => $teacherName,
             'name_lookup_hash' => $lookupHash,
         ]);
+        RosterImportState::markImported(RosterImportState::TEACHERS);
 
         $download = $this->actingAs($counselor)->get(route('admin.data-backup.download'));
         $archiveContents = file_get_contents($download->baseResponse->getFile()->getPathname());
         $this->assertIsString($archiveContents);
         $backup = UploadedFile::fake()->createWithContent('teacher-roster.zip', $archiveContents);
         TeacherReference::query()->delete();
+        RosterImportState::query()->delete();
 
         $this->actingAs($counselor)
             ->from(route('guidance.dashboard'))
@@ -278,6 +284,7 @@ class DataBackupTest extends TestCase
             ->assertSessionHas('backup_status');
 
         $this->assertSame($teacherName, TeacherReference::query()->where('name_lookup_hash', $lookupHash)->value('name'));
+        $this->assertTrue(RosterImportState::isImported(RosterImportState::TEACHERS));
     }
 
     public function test_non_kajorec_archive_is_rejected_without_changing_records(): void
@@ -307,6 +314,21 @@ class DataBackupTest extends TestCase
             ->post(route('admin.data-backup.import'), ['backup_file' => $backup])
             ->assertRedirect(route('guidance.dashboard'))
             ->assertSessionHas('backup_status');
+    }
+
+    public function test_previous_version_three_backups_without_roster_import_states_remain_importable(): void
+    {
+        $counselor = $this->createUser('guidance_counselor');
+        $backup = $this->createBackupUpload([], ['version' => 3]);
+
+        $this->actingAs($counselor)
+            ->from(route('guidance.dashboard'))
+            ->post(route('admin.data-backup.import'), ['backup_file' => $backup])
+            ->assertRedirect(route('guidance.dashboard'))
+            ->assertSessionHas('backup_status');
+
+        $this->assertFalse(RosterImportState::isImported(RosterImportState::STUDENTS));
+        $this->assertFalse(RosterImportState::isImported(RosterImportState::TEACHERS));
     }
 
     public function test_import_rejects_accounts_whose_email_and_id_number_match_different_users(): void
@@ -357,7 +379,7 @@ class DataBackupTest extends TestCase
             $tables[$table] ??= [];
         }
 
-        $version = $overrides['version'] ?? 3;
+        $version = $overrides['version'] ?? 4;
 
         if ($version === 1) {
             $legacyTables = [];
@@ -387,6 +409,9 @@ class DataBackupTest extends TestCase
             $schema = $legacySchema;
         } elseif ($version === 2) {
             unset($tables['teacher_references'], $schema['teacher_references']);
+            unset($tables['roster_import_states'], $schema['roster_import_states']);
+        } elseif ($version === 3) {
+            unset($tables['roster_import_states'], $schema['roster_import_states']);
         }
 
         $payload = [

@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use App\Notifications\EmailOtp;
+use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\GuidanceCounselorSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -13,6 +14,14 @@ use Tests\TestCase;
 class GuidanceCounselorSetupTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_database_seeder_creates_the_guidance_account_without_a_demo_user(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+
+        $this->assertSame(1, User::query()->count());
+        $this->assertSame(1, User::query()->where('role', 'guidance_counselor')->count());
+    }
 
     public function test_seeded_counselor_logs_in_with_temporary_credentials_and_must_complete_setup(): void
     {
