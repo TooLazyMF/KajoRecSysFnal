@@ -3,6 +3,7 @@
 namespace App\Livewire\Settings;
 
 use App\Concerns\ProfileValidationRules;
+use App\Support\SensitiveLookup;
 use Flux\Flux;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Support\Facades\Auth;
@@ -37,9 +38,17 @@ class Profile extends Component
 
         $validated = $this->validate($this->profileRules($user->id));
 
+        $currentEmailLookupHash = $user->getAttribute('email_lookup_hash');
+        $newEmailLookupHash = SensitiveLookup::hash('email', $validated['email']);
+        $emailChanged = ! is_string($currentEmailLookupHash)
+            || ! hash_equals($currentEmailLookupHash, (string) $newEmailLookupHash);
+        if (! $emailChanged) {
+            unset($validated['email']);
+        }
+
         $user->fill($validated);
 
-        if ($user->isDirty('email')) {
+        if ($emailChanged) {
             $user->email_verified_at = null;
         }
 

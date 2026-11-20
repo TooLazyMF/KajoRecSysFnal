@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rules\Password;
 
 class PasswordResetOtpController extends Controller
 {
@@ -102,7 +101,7 @@ class PasswordResetOtpController extends Controller
         RateLimiter::clear('password-reset-otp:'.hash('sha256', $email));
         event(new PasswordReset($user));
 
-        return to_route('home')->with('status', 'Your password has been reset. You can now log in.');
+        return to_route('login')->with('status', 'Your password has been reset. You can now log in.');
     }
 
     private function cacheKey(string $email): string

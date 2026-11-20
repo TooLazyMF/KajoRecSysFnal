@@ -70,7 +70,9 @@
                                                     Review
                                                 </a>
                                             @endif
-                                            @if ($assignment->status === 'submitted' && $assignment->slip !== 'class-admission-slip')
+                                            @if ($assignment->status === 'submitted'
+                                                && $assignment->slip !== 'class-admission-slip'
+                                                && $assignment->slip !== 'student-referral-slip')
                                                 <form method="POST" action="{{ route('guidance.slip-review.approve', $assignment) }}" class="inline">
                                                     @csrf
                                                     <button type="submit" class="rounded-lg bg-green-700 px-4 py-2 text-xs font-semibold text-white hover:bg-green-800">

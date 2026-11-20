@@ -4,15 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\SlipAssignment;
+use App\Models\User;
 use App\Notifications\ReferralAppointmentUpdate;
+use App\Notifications\WorkflowActivity;
 use App\Services\AppointmentAvailability;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Throwable;
 
 class AppointmentController extends Controller
 {
@@ -45,7 +49,7 @@ class AppointmentController extends Controller
             'duration_minutes' => ['required', 'integer', 'in:30,60,90,120'],
             'concerns' => ['required', 'string', 'max:10000'],
         ]);
-        $scheduledAt = \Illuminate\Support\Carbon::createFromFormat(
+        $scheduledAt = Carbon::createFromFormat(
             'Y-m-d H:i',
             $validated['scheduled_date'].' '.$validated['scheduled_time'],
             config('app.timezone'),
@@ -120,7 +124,7 @@ class AppointmentController extends Controller
             'duration_minutes' => ['required', 'integer', 'in:30,60,90,120'],
             'concerns' => ['required', 'string', 'max:10000'],
         ]);
-        $scheduledAt = \Illuminate\Support\Carbon::createFromFormat(
+        $scheduledAt = Carbon::createFromFormat(
             'Y-m-d H:i',
             $validated['scheduled_date'].' '.$validated['scheduled_time'],
             config('app.timezone'),
@@ -206,7 +210,7 @@ class AppointmentController extends Controller
             'scheduled_time' => ['required', 'date_format:H:i'],
             'reschedule_reason' => ['required', 'string', 'max:2000'],
         ]);
-        $scheduledAt = \Illuminate\Support\Carbon::createFromFormat(
+        $scheduledAt = Carbon::createFromFormat(
             'Y-m-d H:i',
             $validated['scheduled_date'].' '.$validated['scheduled_time'],
             config('app.timezone'),
@@ -258,7 +262,7 @@ class AppointmentController extends Controller
             'scheduled_time' => ['required', 'date_format:H:i', 'in:08:00,09:00,10:00,11:00,13:00,14:00,15:00,16:00,17:00'],
         ]);
 
-        $scheduledAt = \Illuminate\Support\Carbon::createFromFormat(
+        $scheduledAt = Carbon::createFromFormat(
             'Y-m-d H:i',
             $validated['scheduled_date'].' '.$validated['scheduled_time'],
             config('app.timezone'),
@@ -271,16 +275,22 @@ class AppointmentController extends Controller
         }
 
         $availability = app(AppointmentAvailability::class);
-        DB::transaction(function () use ($validated, $scheduledAt, $request, $availability): void {
+        $appointment = DB::transaction(function () use ($validated, $scheduledAt, $request, $availability) {
             $availability->lockSchedule();
             $availability->assertAvailable($scheduledAt);
 
-            Appointment::create([
+            return Appointment::create([
                 'purpose' => $validated['purpose'],
                 'scheduled_at' => $scheduledAt,
                 'user_id' => $request->user()->id,
             ]);
         });
+
+        $this->notifyAppointmentParticipants(
+            $appointment,
+            'Appointment requested',
+            $request->user()->name.' requested a counseling appointment.',
+        );
 
         return redirect()
             ->route('appointments.index')
@@ -300,11 +310,11 @@ class AppointmentController extends Controller
         ]);
 
         $scheduledAt = ! empty($validated['scheduled_at'])
-            ? \Illuminate\Support\Carbon::parse($validated['scheduled_at'])
-            : \Illuminate\Support\Carbon::parse($validated['scheduled_date'].' '.$validated['scheduled_time']);
+            ? Carbon::parse($validated['scheduled_at'])
+            : Carbon::parse($validated['scheduled_date'].' '.$validated['scheduled_time']);
 
         if ($scheduledAt->isPast()) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'scheduled_date' => 'Choose a future appointment date and time.',
             ]);
         }
@@ -335,6 +345,13 @@ class AppointmentController extends Controller
             ]);
         });
 
+        $appointment->refresh();
+        $this->notifyAppointmentRequester(
+            $appointment,
+            'Appointment accepted',
+            'Guidance accepted your counseling appointment for '.$appointment->scheduled_at->format('M j, Y g:i A').'.',
+        );
+
         return redirect()
             ->route('appointments.index')
             ->with('status', 'The appointment request has been accepted.');
@@ -363,6 +380,13 @@ class AppointmentController extends Controller
                 'reviewed_at' => now(),
             ]);
         });
+
+        $appointment->refresh();
+        $this->notifyAppointmentRequester(
+            $appointment,
+            'Appointment declined',
+            'Guidance declined your counseling appointment request. Reason: '.$appointment->decline_reason,
+        );
 
         return redirect()
             ->route('appointments.index')
@@ -409,6 +433,14 @@ class AppointmentController extends Controller
         });
 
         $this->notifyReferralParticipants($appointment->fresh(), 'completed');
+        $appointment->refresh();
+        if ($appointment->referral_id === null) {
+            $this->notifyAppointmentRequester(
+                $appointment,
+                'Appointment completed',
+                'Guidance completed your counseling appointment and saved the session record.',
+            );
+        }
 
         return redirect()
             ->route('appointments.index')
@@ -437,6 +469,14 @@ class AppointmentController extends Controller
         });
 
         $this->notifyReferralParticipants($appointment->fresh(), 'missed');
+        $appointment->refresh();
+        if ($appointment->referral_id === null) {
+            $this->notifyAppointmentRequester(
+                $appointment,
+                'Appointment marked missed',
+                'Your counseling appointment was marked missed by Guidance.',
+            );
+        }
 
         return redirect()
             ->route('appointments.index')
@@ -467,6 +507,14 @@ class AppointmentController extends Controller
         abort_unless($updated === 1, 409);
 
         $this->notifyReferralParticipants($appointment->fresh(), 'completed');
+        $appointment->refresh();
+        if ($appointment->referral_id === null) {
+            $this->notifyAppointmentRequester(
+                $appointment,
+                'Appointment completed',
+                'Guidance updated and completed your counseling appointment record.',
+            );
+        }
 
         return redirect()
             ->route('guidance.records.show', $appointment->user_id)
@@ -520,8 +568,49 @@ class AppointmentController extends Controller
             $referral->assignedBy->notify($notification);
         }
 
+        foreach (User::query()->where('role', 'guidance_counselor')->get() as $counselor) {
+            $counselor->notify($notification);
+        }
+
         if (! in_array($event, ['confirmed', 'suggested'], true)) {
             $referral->student?->notify($notification);
+        }
+    }
+
+    private function notifyAppointmentParticipants(Appointment $appointment, string $title, string $message): void
+    {
+        foreach (User::query()->where('role', 'guidance_counselor')->get() as $counselor) {
+            try {
+                $counselor->notify(new WorkflowActivity(
+                    $title,
+                    $message,
+                    route('appointments.index'),
+                    'appointment',
+                    $appointment->id,
+                ));
+            } catch (Throwable $exception) {
+                report($exception);
+            }
+        }
+    }
+
+    private function notifyAppointmentRequester(Appointment $appointment, string $title, string $message): void
+    {
+        $requester = $appointment->requester;
+        if (! $requester) {
+            return;
+        }
+
+        try {
+            $requester->notify(new WorkflowActivity(
+                $title,
+                $message,
+                route('appointments.index'),
+                'appointment',
+                $appointment->id,
+            ));
+        } catch (Throwable $exception) {
+            report($exception);
         }
     }
 
@@ -537,7 +626,7 @@ class AppointmentController extends Controller
 
         $scheduledAt = null;
         if (filled($validated['scheduled_date'] ?? null) && filled($validated['scheduled_time'] ?? null)) {
-            $scheduledAt = \Illuminate\Support\Carbon::createFromFormat(
+            $scheduledAt = Carbon::createFromFormat(
                 'Y-m-d H:i',
                 $validated['scheduled_date'].' '.$validated['scheduled_time'],
                 config('app.timezone'),
@@ -576,6 +665,13 @@ class AppointmentController extends Controller
                 'reviewed_at' => null,
             ]);
         });
+
+        $appointment->refresh();
+        $this->notifyAppointmentParticipants(
+            $appointment,
+            'Re-appointment requested',
+            $request->user()->name.' requested a different counseling appointment time.',
+        );
 
         return redirect()
             ->route('appointments.index')

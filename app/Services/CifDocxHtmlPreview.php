@@ -50,6 +50,7 @@ class CifDocxHtmlPreview
                     $pageTwoRight .= $table;
                 }
                 $tableIndex++;
+
                 continue;
             }
 
@@ -62,7 +63,7 @@ class CifDocxHtmlPreview
                 }
 
                 if ($text !== '') {
-                    ${$column} .= '<p>' . e($text) . '</p>';
+                    ${$column} .= '<p>'.e($text).'</p>';
                 }
             }
         }
@@ -98,11 +99,12 @@ class CifDocxHtmlPreview
         foreach ($xpath->query('./w:tr', $table) as $row) {
             $html .= '<tr>';
             foreach ($xpath->query('./w:tc', $row) as $cell) {
-                $html .= '<td>' . e($this->text($xpath, $cell)) . '</td>';
+                $html .= '<td>'.e($this->text($xpath, $cell)).'</td>';
             }
             $html .= '</tr>';
         }
-        return $html . '</table>';
+
+        return $html.'</table>';
     }
 
     private function text(DOMXPath $xpath, DOMElement $element): string
@@ -111,6 +113,7 @@ class CifDocxHtmlPreview
         foreach ($xpath->query('.//w:t | .//w:tab | .//w:br', $element) as $node) {
             $parts[] = $node->localName === 'tab' ? "\t" : ($node->localName === 'br' ? "\n" : $node->nodeValue);
         }
+
         return trim(preg_replace('/[ \t]+/', ' ', implode('', $parts)) ?? '');
     }
 }

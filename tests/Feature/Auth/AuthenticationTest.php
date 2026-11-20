@@ -16,6 +16,8 @@ class AuthenticationTest extends TestCase
         $response = $this->get(route('login'));
 
         $response->assertOk()
+            ->assertSee('Email address or account name')
+            ->assertSee('data-loading-spinner', false)
             ->assertSee('About Us')
             ->assertSee('What is KajoRec?')
             ->assertSee('web-based Guidance Office Record Management and Appointment System')

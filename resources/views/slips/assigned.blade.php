@@ -54,7 +54,15 @@
                                                 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200' => in_array($assignment->status, ['pending', 'submitted'], true),
                                                 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200' => $assignment->status === 'approved',
                                             ])>
-                                                {{ $assignment->status === 'pending' ? 'Not started' : ($assignment->status === 'submitted' ? 'Awaiting approval' : ucfirst($assignment->status)) }}
+                                                @if ($assignment->slip === 'student-referral-slip' && $assignment->status === 'submitted')
+                                                    Received by Guidance
+                                                @elseif ($assignment->status === 'pending')
+                                                    Not started
+                                                @elseif ($assignment->status === 'submitted')
+                                                    Awaiting approval
+                                                @else
+                                                    {{ ucfirst($assignment->status) }}
+                                                @endif
                                             </span>
                                         </td>
                                         <td class="px-5 py-4 text-right">

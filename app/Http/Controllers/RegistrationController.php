@@ -29,7 +29,7 @@ class RegistrationController extends Controller
                 ->withInput($pendingRegistration->formInput($request))
                 ->with('mail_transport_error', true)
                 ->withErrors([
-                    'email' => 'Please check your internet connection and try again. We could not send the verification email.',
+                    'email' => 'Email delivery is unavailable. Please try again later or contact the administrator.',
                 ]);
         }
 

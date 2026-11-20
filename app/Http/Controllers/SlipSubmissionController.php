@@ -3,19 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
-use App\Models\SlipInformation;
 use App\Models\SlipAssignment;
+use App\Models\SlipInformation;
 use App\Models\SlipSubmission;
 use App\Models\StudentReference;
 use App\Models\TeacherReference;
 use App\Models\User;
-use App\Services\SlipPdfGenerator;
-use App\Services\CifDocxSampleGenerator;
-use App\Services\CifDocxHtmlPreview;
+use App\Notifications\WorkflowActivity;
 use App\Services\AppointmentAvailability;
+use App\Services\CifDocxHtmlPreview;
+use App\Services\CifDocxSampleGenerator;
+use App\Services\SlipPdfGenerator;
 use App\Services\SlipSubmissionDocxGenerator;
-use App\Support\SlipCatalog;
 use App\Support\SensitiveLookup;
+use App\Support\SlipCatalog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -23,6 +24,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
@@ -173,6 +175,15 @@ class SlipSubmissionController extends Controller
             $slipAssignment->update(['student_sent_to_teacher_at' => now()]);
         }
 
+        $this->notifyWorkflowParticipants(
+            [$referral->assignedBy, $slipAssignment->student],
+            'Class Admission result forwarded',
+            'The student sent the approved Class Admission result to the referring teacher.',
+            route('teacher.referral-history'),
+            'slip',
+            $slipAssignment->id,
+        );
+
         return redirect()->route('assigned-slips.index')->with('status', 'The Class Admission result was sent to your teacher.');
     }
 
@@ -229,8 +240,7 @@ class SlipSubmissionController extends Controller
                     'document_control_data' => $referralData,
                 ];
             })
-            ->filter(fn (array $referral) =>
-                $referral['can_issue_class_admission']
+            ->filter(fn (array $referral) => $referral['can_issue_class_admission']
                 || ! $referral['referral_pdf_ready']
                 || $referral['appointment_requires_completion']
             )
@@ -238,13 +248,14 @@ class SlipSubmissionController extends Controller
         $referralsMissingDocumentControlCount = $referrals
             ->where('missing_document_control_identifiers', true)
             ->count();
+
         return view('admin.admin_dashboard', [
             'referrals' => $referrals,
             'totalStudentsCount' => User::query()->where('role', 'student')->where('is_active', true)->count(),
             'archivedStudentsCount' => User::query()->where('role', 'student')->where(function ($query) {
                 $query->where('is_active', false)->orWhere('is_graduated', true);
             })->count(),
-            'hasImportedStudentFile' => \App\Models\StudentReference::query()->exists(),
+            'hasImportedStudentFile' => StudentReference::query()->exists(),
             'hasImportedTeacherFile' => TeacherReference::query()->exists(),
             'todayAppointmentsCount' => Appointment::query()->whereDate('scheduled_at', today())->count(),
             'todayAppointments' => Appointment::query()
@@ -297,7 +308,10 @@ class SlipSubmissionController extends Controller
                 ->where(function ($query): void {
                     $query->where(function ($query): void {
                         $query->where('status', 'submitted')
-                            ->whereIn('slip', SlipCatalog::workflowSlugs());
+                            ->whereIn('slip', array_values(array_diff(
+                                SlipCatalog::workflowSlugs(),
+                                ['student-referral-slip']
+                            )));
                     })->orWhere(function ($query): void {
                         $query->where('status', 'pending')
                             ->whereIn('slip', array_keys(SlipCatalog::studentRequestForms()))
@@ -354,8 +368,7 @@ class SlipSubmissionController extends Controller
                     'appointment' => $appointment,
                 ];
             })
-            ->filter(fn (array $referral) =>
-                $referral['can_issue_class_admission']
+            ->filter(fn (array $referral) => $referral['can_issue_class_admission']
                 || ! $referral['referral_pdf_ready']
                 || $referral['appointment_requires_completion']
             )
@@ -546,42 +559,42 @@ class SlipSubmissionController extends Controller
     private function clientInformationSampleData(): array
     {
         return [
-                'last_name' => 'Ixia',
-                'first_name' => 'Ixia',
-                'middle_name' => 'Ix.',
-                'student_id' => '1503',
-                'contact_number' => '0912 345 6789',
-                'course_year' => 'BTLED-IA 3',
-                'birth_date' => 'October 8, 2003',
-                'sex' => 'Female',
-                'civil_status' => 'Single',
-                'nationality' => 'Filipino',
-                'birth_place' => 'Baguio City, Benguet',
-                'email' => 'ixia.ixia@example.com',
-                'languages' => 'Filipino, English, Ilocano',
-                'address' => 'Barangay Loakan, Baguio City, Benguet',
-                'disability' => 'None',
-                'indigenous_group' => 'None',
-                'pwd' => 'No',
-                'student_parent' => 'No',
-                'financial_sources' => 'Parents and personal savings',
-                'parent_marital_status' => 'Married',
-                'father_name' => 'Juan Ixia',
-                'mother_name' => 'Maria Ixia',
-                'guardian_name' => 'Maria Ixia',
-                'father_age' => '48',
-                'mother_age' => '46',
-                'guardian_relationship' => 'Mother',
-                'father_occupation' => 'Civil Engineer',
-                'mother_occupation' => 'Public School Teacher',
-                'guardian_occupation' => 'Public School Teacher',
-                'father_contact' => '0917 222 3344',
-                'mother_contact' => '0918 555 6677',
-                'guardian_contact' => '0918 555 6677',
-                'siblings' => 'Ivy Ixia, 20, BS Information Technology, Single, Student',
-                'educational_background' => "Senior High School | Benguet National High School | 2022 | With Honors\nJunior High School | Benguet National High School | 2018 | Conduct Award\nElementary | Loakan Elementary School | 2014 | Academic Excellence",
-                'about_me' => "Responsible, kind, and determined\nHardworking and supportive\nCaring and patient\nIvy, because she listens to me\nSafe and grateful\nI enjoyed reading and drawing\nHelpful and inspiring\nI enjoy writing stories\nI feel hopeful and excited\nTo finish my degree and help my family",
-                'consent' => ['agree'],
+            'last_name' => 'Ixia',
+            'first_name' => 'Ixia',
+            'middle_name' => 'Ix.',
+            'student_id' => '1503',
+            'contact_number' => '0912 345 6789',
+            'course_year' => 'BTLED-IA 3',
+            'birth_date' => 'October 8, 2003',
+            'sex' => 'Female',
+            'civil_status' => 'Single',
+            'nationality' => 'Filipino',
+            'birth_place' => 'Baguio City, Benguet',
+            'email' => 'ixia.ixia@example.com',
+            'languages' => 'Filipino, English, Ilocano',
+            'address' => 'Barangay Loakan, Baguio City, Benguet',
+            'disability' => 'None',
+            'indigenous_group' => 'None',
+            'pwd' => 'No',
+            'student_parent' => 'No',
+            'financial_sources' => 'Parents and personal savings',
+            'parent_marital_status' => 'Married',
+            'father_name' => 'Juan Ixia',
+            'mother_name' => 'Maria Ixia',
+            'guardian_name' => 'Maria Ixia',
+            'father_age' => '48',
+            'mother_age' => '46',
+            'guardian_relationship' => 'Mother',
+            'father_occupation' => 'Civil Engineer',
+            'mother_occupation' => 'Public School Teacher',
+            'guardian_occupation' => 'Public School Teacher',
+            'father_contact' => '0917 222 3344',
+            'mother_contact' => '0918 555 6677',
+            'guardian_contact' => '0918 555 6677',
+            'siblings' => 'Ivy Ixia, 20, BS Information Technology, Single, Student',
+            'educational_background' => "Senior High School | Benguet National High School | 2022 | With Honors\nJunior High School | Benguet National High School | 2018 | Conduct Award\nElementary | Loakan Elementary School | 2014 | Academic Excellence",
+            'about_me' => "Responsible, kind, and determined\nHardworking and supportive\nCaring and patient\nIvy, because she listens to me\nSafe and grateful\nI enjoyed reading and drawing\nHelpful and inspiring\nI enjoy writing stories\nI feel hopeful and excited\nTo finish my degree and help my family",
+            'consent' => ['agree'],
         ];
     }
 
@@ -594,7 +607,10 @@ class SlipSubmissionController extends Controller
             ->where(function ($query): void {
                 $query->where(function ($query): void {
                     $query->where('status', 'submitted')
-                        ->whereIn('slip', SlipCatalog::workflowSlugs());
+                        ->whereIn('slip', array_values(array_diff(
+                            SlipCatalog::workflowSlugs(),
+                            ['student-referral-slip']
+                        )));
                 })->orWhere(function ($query): void {
                     $query->where('status', 'pending')
                         ->whereIn('slip', array_keys(SlipCatalog::studentRequestForms()))
@@ -616,6 +632,11 @@ class SlipSubmissionController extends Controller
         SlipPdfGenerator $pdfGenerator
     ): RedirectResponse {
         abort_unless($request->user()->role === 'guidance_counselor', 403);
+        abort_unless(
+            $slipAssignment->slip !== 'student-referral-slip',
+            409,
+            'Student referrals are received directly and do not require approval.'
+        );
 
         $guidanceData = [];
         if ($slipAssignment->slip === 'class-admission-slip') {
@@ -684,6 +705,16 @@ class SlipSubmissionController extends Controller
                 'student_sent_to_teacher_at' => $assignment->slip === 'class-admission-slip' ? now() : null,
             ]);
         });
+
+        $slipAssignment->refresh();
+        $this->notifyWorkflowParticipants(
+            [$slipAssignment->student, $slipAssignment->assignedBy],
+            'Form approved',
+            'The '.$this->slipDisplayName($slipAssignment->slip).' has been approved by Guidance.',
+            route('assigned-slips.index'),
+            'slip',
+            $slipAssignment->id,
+        );
 
         return redirect()
             ->route('guidance.slip-review')
@@ -768,16 +799,16 @@ class SlipSubmissionController extends Controller
 
         $folders['other']['entries'] = $otherHistory->concat(
             SlipInformation::query()
-                    ->where('user_id', $request->user()->id)
-                    ->latest()
-                    ->get()
-                    ->map(fn (SlipInformation $slipInformation) => [
-                        'title' => 'Slip Information',
-                        'submitted_at' => $slipInformation->created_at,
-                        'status' => $slipInformation->review_status,
-                        'show_url' => route('slip-informations.show', $slipInformation),
-                        'pdf_url' => route('slip-informations.pdf', $slipInformation),
-                    ])
+                ->where('user_id', $request->user()->id)
+                ->latest()
+                ->get()
+                ->map(fn (SlipInformation $slipInformation) => [
+                    'title' => 'Slip Information',
+                    'submitted_at' => $slipInformation->created_at,
+                    'status' => $slipInformation->review_status,
+                    'show_url' => route('slip-informations.show', $slipInformation),
+                    'pdf_url' => route('slip-informations.pdf', $slipInformation),
+                ])
         )->sortByDesc('submitted_at')->values();
 
         $folders['appointments'] = [
@@ -808,8 +839,7 @@ class SlipSubmissionController extends Controller
         Request $request,
         string $slip,
         SlipPdfGenerator $pdfGenerator
-    ): RedirectResponse
-    {
+    ): RedirectResponse {
         abort_unless($request->user()->role === 'teacher', 403);
         abort_unless(isset(SlipCatalog::forRole('teacher')[$slip]), 404);
 
@@ -894,15 +924,11 @@ class SlipSubmissionController extends Controller
 
             $referralGroups = [];
             foreach ($absenceDates as $index => $absenceDate) {
-                $reason = $absenceReasons[$index];
-                $otherReason = $absenceOtherReasons[$index] ?? null;
-                $groupKey = $reason.'|'.mb_strtolower(trim((string) $otherReason));
-                $referralGroups[$groupKey] ??= [
-                    'reason' => $reason,
-                    'other_reason' => $otherReason,
-                    'dates' => [],
+                $referralGroups[] = [
+                    'reason' => $absenceReasons[$index],
+                    'other_reason' => $absenceOtherReasons[$index] ?? null,
+                    'dates' => [$absenceDate],
                 ];
-                $referralGroups[$groupKey]['dates'][] = $absenceDate;
             }
 
             return DB::transaction(function () use ($request, $student, $slip, $data, $definition, $pdfGenerator, $referralGroups) {
@@ -948,6 +974,14 @@ class SlipSubmissionController extends Controller
                     ]);
                 }
 
+                $this->notifyWorkflowParticipants(
+                    [$student, ...User::query()->where('role', 'guidance_counselor')->get()],
+                    'Referral submitted',
+                    'A student referral was submitted by '.$request->user()->name.' and requires Guidance review.',
+                    route('guidance.referrals'),
+                    'referral',
+                );
+
                 return redirect()
                     ->route('teacher.dashboard')
                     ->with('status', count($referralGroups) === 1
@@ -968,6 +1002,14 @@ class SlipSubmissionController extends Controller
             'student_id' => $validated['student_id'],
             'slip' => $slip,
         ]);
+        $student = User::query()->find($validated['student_id']);
+        $this->notifyWorkflowParticipants(
+            [$student],
+            'Form assigned',
+            'Guidance or a teacher assigned the '.$this->slipDisplayName($slip).' to you.',
+            route('assigned-slips.index'),
+            'slip',
+        );
 
         return redirect()
             ->route('slips.index')
@@ -1154,6 +1196,15 @@ class SlipSubmissionController extends Controller
             ]);
         });
 
+        $this->notifyWorkflowParticipants(
+            User::query()->where('role', 'guidance_counselor')->get()->all(),
+            'Form requested',
+            $request->user()->name.' requested the '.$this->slipDisplayName($slip).'.',
+            route('guidance.slip-review'),
+            'slip',
+            $assignment->id,
+        );
+
         return redirect()->route('assigned-slips.fillup', $assignment);
     }
 
@@ -1238,6 +1289,18 @@ class SlipSubmissionController extends Controller
                 'slip' => $slip,
             ]);
         });
+
+        $this->notifyWorkflowParticipants(
+            [
+                $referral->student,
+                $referral->assignedBy,
+            ],
+            'Class Admission Slip issued',
+            'Guidance issued a Class Admission Slip for your referral.',
+            route('assigned-slips.index'),
+            'slip',
+            $referral->id,
+        );
 
         return redirect()
             ->route('guidance.dashboard')
@@ -1484,14 +1547,18 @@ class SlipSubmissionController extends Controller
             ])['details'];
             $college = SlipCatalog::courseCollegeMap()[$cifData['course']];
 
+            $clientInformationDefaults = $this->clientInformationDefaults($student);
             $data = [
-                ...$this->clientInformationDefaults($student),
+                ...$clientInformationDefaults,
                 ...array_filter($data, fn ($value) => is_array($value) ? $value !== [] : filled($value)),
                 'college' => $college,
                 'course' => trim($cifData['course']),
                 'year_level' => trim($cifData['year_level']),
                 'course_year' => trim($cifData['course'].' '.$cifData['year_level']),
             ];
+            if (filled($clientInformationDefaults['contact_number'] ?? null)) {
+                $data['contact_number'] = $clientInformationDefaults['contact_number'];
+            }
         }
 
         if (! $this->isTeacherSubmittedReferral($slipAssignment)) {
@@ -1527,6 +1594,7 @@ class SlipSubmissionController extends Controller
         $data['referred_student_id'] = $student->id;
         $data['referred_student_name'] = $student->name;
         $data['assigned_by'] = $slipAssignment->assigned_by;
+
         return $this->createSubmission(
             $request,
             $slipAssignment->slip,
@@ -1580,7 +1648,7 @@ class SlipSubmissionController extends Controller
         $isOtherReferralReason = ($input['referral_reasons'] ?? []) === ['other'];
 
         if ($isOtherReferralReason && ! filled($input['other_reason'] ?? null)) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'details.other_reason' => 'Please specify the other reason for referral.',
             ]);
         }
@@ -1839,6 +1907,24 @@ class SlipSubmissionController extends Controller
             throw $exception;
         }
 
+        $participants = [
+            $submission->user,
+            ...User::query()->where('role', 'guidance_counselor')->get()->all(),
+        ];
+        if ($assignment?->assignedBy !== null) {
+            $participants[] = $assignment->assignedBy;
+        }
+        $this->notifyWorkflowParticipants(
+            $participants,
+            'Form submitted',
+            'The '.$this->slipDisplayName($slip).' was submitted and is awaiting review.',
+            $request->user()->role === 'student'
+                ? route('assigned-slips.index')
+                : route('guidance.slip-review'),
+            'slip',
+            $submission->id,
+        );
+
         return redirect()->route('slips.submissions.show', $submission);
     }
 
@@ -1846,6 +1932,45 @@ class SlipSubmissionController extends Controller
     {
         return $assignment->slip === 'student-referral-slip'
             && (bool) ($assignment->slipSubmission?->data['submitted_by_teacher'] ?? false);
+    }
+
+    /**
+     * @param  iterable<int, User|null>  $participants
+     */
+    private function notifyWorkflowParticipants(
+        iterable $participants,
+        string $title,
+        string $message,
+        string $url,
+        string $activityType,
+        ?int $activityId = null,
+    ): void {
+        $notifiedIds = [];
+
+        foreach ($participants as $participant) {
+            if (! $participant instanceof User || isset($notifiedIds[$participant->id])) {
+                continue;
+            }
+
+            $notifiedIds[$participant->id] = true;
+
+            try {
+                $participant->notify(new WorkflowActivity(
+                    $title,
+                    $message,
+                    $url,
+                    $activityType,
+                    $activityId,
+                ));
+            } catch (Throwable $exception) {
+                report($exception);
+            }
+        }
+    }
+
+    private function slipDisplayName(string $slip): string
+    {
+        return SlipCatalog::all()[$slip]['title'] ?? 'form';
     }
 
     public function show(Request $request, SlipSubmission $slipSubmission): View
@@ -1979,8 +2104,7 @@ class SlipSubmissionController extends Controller
         SlipSubmission $slipSubmission,
         CifDocxSampleGenerator $cifDocxGenerator,
         SlipSubmissionDocxGenerator $slipDocxGenerator
-    ): Response
-    {
+    ): Response {
         $this->authorizeSubmission($request, $slipSubmission);
 
         if (in_array($slipSubmission->slip, ['student-referral-slip', 'class-admission-slip'], true)) {

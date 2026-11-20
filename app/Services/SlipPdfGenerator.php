@@ -225,8 +225,7 @@ class SlipPdfGenerator
         int $rows = 1,
         array $color = [0, 0, 0],
         bool $autoFit = false,
-    ): void
-    {
+    ): void {
         $encoded = iconv('UTF-8', 'windows-1252//TRANSLIT', $value) ?: '';
         $fontSize = $rows > 1 ? 7 : 8;
 

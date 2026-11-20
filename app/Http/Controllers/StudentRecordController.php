@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Support\SlipCatalog;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class StudentRecordController extends Controller
@@ -184,7 +185,7 @@ class StudentRecordController extends Controller
         ]);
     }
 
-    /** @return \Illuminate\Support\Collection<int, array<string, mixed>> */
+    /** @return Collection<int, array<string, mixed>> */
     private function referralTracking(int $studentId)
     {
         $referrals = SlipAssignment::query()

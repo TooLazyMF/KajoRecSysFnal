@@ -5,7 +5,7 @@
                 <p class="text-xs font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-300">Teacher portal</p>
                 <h1 class="mt-2 text-2xl font-extrabold text-[#28643a] dark:text-[#91dfa6]">Teacher Dashboard</h1>
                 <p class="mt-2 text-sm text-slate-600 dark:text-zinc-300">Refer students to the Guidance Office and track their referral progress.</p>
-                <a href="{{ route('slips.fillup', 'student-referral-slip') }}" class="mt-4 inline-flex rounded-lg bg-[#09ba44] px-4 py-2 text-sm font-semibold text-white hover:bg-[#079b38]">Create Student Referral</a>
+                <a href="{{ route('slips.fillup', 'student-referral-slip') }}" class="mt-4 inline-flex rounded-lg bg-[#09ba44] px-4 py-2 text-sm font-semibold text-white hover:bg-[#079b38] dark:bg-[#20783e] dark:hover:bg-[#28894a]">Create Student Referral</a>
             </header>
             @if (session('status'))<div class="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-900 dark:border-green-900 dark:bg-green-950/50 dark:text-green-200">{{ session('status') }}</div>@endif
             @php

@@ -25,7 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
             at: '*',
             headers: Request::HEADER_X_FORWARDED_PROTO,
         );
-        $middleware->redirectGuestsTo(fn () => route('home'));
+        $middleware->redirectGuestsTo(fn () => route('login'));
 
         $middleware->web(append: [
             EnsureUserIsActive::class,

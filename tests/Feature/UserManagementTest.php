@@ -4,9 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\StudentReference;
 use App\Models\User;
-use App\Support\SensitiveLookup;
 use App\Notifications\EmailOtp;
 use App\Notifications\TeacherAccountCreated;
+use App\Support\SensitiveLookup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
@@ -254,8 +254,8 @@ class UserManagementTest extends TestCase
         $this->put(route('teacher.profile.update'), [
             'email' => 'new.teacher@example.com',
             'id_number' => 'TEACHER-001',
-            'password' => 'updated-teacher-password',
-            'password_confirmation' => 'updated-teacher-password',
+            'password' => 'UpdatedTeacher123',
+            'password_confirmation' => 'UpdatedTeacher123',
         ])->assertRedirect(route('verification.notice'));
 
         Notification::assertSentTo($teacher, EmailOtp::class);
@@ -265,7 +265,7 @@ class UserManagementTest extends TestCase
         $this->assertSame('TEACHER-001', $teacher->id_number);
         $this->assertFalse($teacher->hasVerifiedEmail());
         $this->assertFalse($teacher->must_change_password);
-        $this->assertTrue(Hash::check('updated-teacher-password', $teacher->password));
+        $this->assertTrue(Hash::check('UpdatedTeacher123', $teacher->password));
         $this->assertFalse(Hash::check('initial-password', $teacher->password));
 
         $this->get(route('verification.notice'))

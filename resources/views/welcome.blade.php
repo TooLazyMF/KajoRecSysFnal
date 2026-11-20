@@ -431,6 +431,10 @@
         }
 
         .submit-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
             min-height: 50px;
             margin-top: 3px;
             border: 0;
@@ -446,6 +450,12 @@
         .submit-button:hover {
             transform: translateY(-1px);
             background: var(--primary-hover);
+        }
+
+        .submit-button:disabled {
+            cursor: wait;
+            opacity: 0.8;
+            transform: none;
         }
 
         .switch-copy {
@@ -951,13 +961,13 @@
 
                     <div class="form-fields">
                         <label class="field" for="login-email">
-                            Email address or teacher name
+                            Email address or account name
                             <input
                                 id="login-email"
                                 name="email"
                                 type="text"
                                 value="{{ old('email') }}"
-                                placeholder="Email address or teacher name"
+                                placeholder="Email address or account name"
                                 autocomplete="username"
                                 required
                                 autofocus
@@ -1002,7 +1012,11 @@
                             @endif
                         </div>
 
-                        <button class="submit-button" type="submit">Sign in</button>
+                        <button class="submit-button" type="submit" data-loading-button data-loading-label="Signing in...">
+                            <span data-button-label>Sign in</span>
+                            <span class="loading-spinner" data-loading-spinner aria-hidden="true" hidden></span>
+                        </button>
+                        <span class="loading-status" data-submit-status role="status" aria-live="polite" hidden></span>
                     </div>
                 </form>
 
@@ -1082,6 +1096,12 @@
                 <h1 class="form-heading" tabindex="-1">Create your account</h1>
                 <p class="form-intro">A few details and you’ll be ready to get started.</p>
                 <p class="form-intro">Use an email address you can access. We will send a verification code; verify it to use your account.</p>
+                @unless ($hasImportedStudentList)
+                    <p class="session-status" role="status">The guidance counselor has not imported the student list yet. Student registration will be available after it is imported.</p>
+                @endunless
+                @unless ($hasImportedTeacherList)
+                    <p class="session-status" role="status">The teacher list has not been imported yet. Teacher accounts are managed by the guidance counselor.</p>
+                @endunless
                 @error('registration')
                     <p class="field-error" role="alert">{{ $message }}</p>
                 @enderror
@@ -1209,7 +1229,11 @@
                             <span data-password-match-feedback class="hidden" aria-live="polite"></span>
                         </div>
 
-                        <button class="submit-button" type="submit">Create account</button>
+                        <button class="submit-button" type="submit" data-loading-button data-loading-label="Creating your account...">
+                            <span data-button-label>Create account</span>
+                            <span class="loading-spinner" data-loading-spinner aria-hidden="true" hidden></span>
+                        </button>
+                        <span class="loading-status" data-submit-status role="status" aria-live="polite" hidden></span>
                     </div>
                 </form>
 
@@ -1313,7 +1337,7 @@
         <div class="mail-transport-alert" role="alert" data-mail-transport-alert>
             <div>
                 <strong>Unable to send verification email</strong>
-                Please check your internet connection. Your connection may be unstable. Try again in a moment.
+                Email delivery is unavailable. Please try again later or contact the administrator.
             </div>
             <button type="button" aria-label="Close notification" data-dismiss-mail-alert>&times;</button>
         </div>
@@ -1472,8 +1496,29 @@
 
             if (!confirmed) {
                 event.preventDefault();
+                return;
             }
+
+            showFormLoading(event.currentTarget);
         });
+
+        authPage.querySelector('[data-auth-view="login"] form').addEventListener('submit', (event) => {
+            showFormLoading(event.currentTarget);
+        });
+
+        function showFormLoading(form) {
+            const button = form.querySelector('[data-loading-button]');
+            if (!button) return;
+
+            form.setAttribute('aria-busy', 'true');
+            button.disabled = true;
+            button.querySelector('[data-button-label]').textContent = button.dataset.loadingLabel;
+            button.querySelector('[data-loading-spinner]').hidden = false;
+
+            const status = form.querySelector('[data-submit-status]');
+            status.textContent = button.dataset.loadingLabel;
+            status.hidden = false;
+        }
 
         const mobileLayout = window.matchMedia('(max-width: 760px)');
         if (authPage.dataset.mode === 'welcome' && mobileLayout.matches) {

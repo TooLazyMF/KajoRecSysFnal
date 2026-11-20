@@ -1,0 +1,69 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Concerns\PasswordValidationRules;
+use App\Models\User;
+use App\Rules\UniqueEncryptedLookup;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\View\View;
+
+class GuidanceCounselorProfileController extends Controller
+{
+    use PasswordValidationRules;
+
+    public function edit(Request $request): View|RedirectResponse
+    {
+        $user = $request->user();
+
+        abort_unless($user instanceof User && $user->role === 'guidance_counselor', 403);
+
+        if (filled($user->name)
+            && $user->name !== 'Administrator'
+            && filled($user->email)
+            && ! $user->must_change_password) {
+            return $user->hasVerifiedEmail()
+                ? to_route('guidance.dashboard')
+                : to_route('verification.notice');
+        }
+
+        return view('guidance.complete-profile', compact('user'));
+    }
+
+    public function update(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        abort_unless($user instanceof User && $user->role === 'guidance_counselor', 403);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255', 'not_in:Administrator'],
+            'email' => ['required', 'email', 'max:255', new UniqueEncryptedLookup('users', 'email', $user->id)],
+            'password' => $this->passwordRules(),
+        ]);
+
+        if (Hash::check($validated['password'], $user->getAuthPassword())) {
+            return back()->withErrors([
+                'password' => 'Choose a new password different from your initial password.',
+            ]);
+        }
+
+        $emailChanged = $user->email !== $validated['email'];
+        $user->forceFill([
+            'name' => trim($validated['name']),
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+            'must_change_password' => false,
+            'email_verified_at' => $emailChanged ? null : $user->email_verified_at,
+        ])->save();
+
+        if (! $user->hasVerifiedEmail()) {
+            $user->sendEmailVerificationNotification();
+        }
+
+        return to_route('verification.notice')
+            ->with('status', 'Your details and new password were saved. A verification code was sent to your email address.');
+    }
+}

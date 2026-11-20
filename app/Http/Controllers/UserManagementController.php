@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Concerns\PasswordValidationRules;
-use App\Models\StudentReference;
 use App\Models\SlipSubmission;
+use App\Models\StudentReference;
 use App\Models\TeacherReference;
 use App\Models\User;
 use App\Notifications\TeacherAccountCreated;
@@ -12,8 +12,8 @@ use App\Rules\UniqueEncryptedLookup;
 use App\Support\SensitiveLookup;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -638,7 +638,7 @@ class UserManagementController extends Controller
             ])->save();
         }
 
-        return to_route('home')->with('status', 'Your KajoRec teacher account is verified and active. You may now sign in.');
+        return to_route('login')->with('status', 'Your KajoRec teacher account is verified and active. You may now sign in.');
     }
 
     public function updateStatus(Request $request, User $user): RedirectResponse

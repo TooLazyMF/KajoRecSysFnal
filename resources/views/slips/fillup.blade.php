@@ -167,6 +167,7 @@
                                             label="{{ $field['label'] }}"
                                             value="{{ $fieldValue }}"
                                             :required="$field['key'] === 'contact_number'"
+                                            :readonly="filled($defaults['contact_number'] ?? null)"
                                             data-cif-contact
                                         />
                                         <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Enter 11 digits only.</p>

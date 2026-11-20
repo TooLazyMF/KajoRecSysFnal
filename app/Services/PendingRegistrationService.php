@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
+use Symfony\Component\Mailer\Exception\TransportException;
 
 class PendingRegistrationService
 {
@@ -69,6 +70,8 @@ class PendingRegistrationService
             return;
         }
 
+        $this->assertProductionMailerCanDeliver();
+
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         Cache::put($this->otpCacheKey($token), Hash::make($code), now()->addMinutes(EmailOtpService::EXPIRATION_MINUTES));
 
@@ -80,6 +83,31 @@ class PendingRegistrationService
                 $this->registrationName($registration),
             ),
         );
+    }
+
+    private function assertProductionMailerCanDeliver(): void
+    {
+        if (! app()->isProduction()) {
+            return;
+        }
+
+        $mailer = config('mail.default');
+        $mailerConfig = config("mail.mailers.{$mailer}", []);
+        $transports = [];
+
+        if (($mailerConfig['transport'] ?? null) === 'failover') {
+            foreach ($mailerConfig['mailers'] ?? [] as $fallbackMailer) {
+                $transports[] = config("mail.mailers.{$fallbackMailer}.transport", $fallbackMailer);
+            }
+        } else {
+            $transports[] = $mailerConfig['transport'] ?? $mailer;
+        }
+
+        if (array_intersect(['log', 'array'], $transports) !== []) {
+            throw new TransportException(
+                'Registration OTP delivery requires a real mail transport; log and array transports do not send email.',
+            );
+        }
     }
 
     public function verify(Request $request, string $code): bool

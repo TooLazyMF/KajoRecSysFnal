@@ -27,6 +27,17 @@ runtime does not include Composer, so deploy it as a Docker web service instead.
 4. Deploy. The container installs PHP dependencies with Composer, builds the
    frontend assets, runs database migrations, and starts Laravel on Render's
    assigned port.
+5. Once, after the first deployment, run this from the service shell to create
+   the initial guidance counselor account:
+
+   ```sh
+   php artisan db:seed --class=GuidanceCounselorSeeder --force
+   ```
+
+   Sign in with username `Administrator` and password `Admin`. The account
+   requires a new name, email address, and password before it can access the
+   system; verify the new email to continue. Keep the roster files private and
+   import the student list before allowing student registrations.
 
 Brevo delivery uses its HTTPS API, not SMTP. Render Free web services block
 outbound SMTP ports 25, 465, and 587, so configuring Brevo SMTP will not send

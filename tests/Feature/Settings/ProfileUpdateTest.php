@@ -3,7 +3,6 @@
 namespace Tests\Feature\Settings;
 
 use App\Models\User;
-use App\Models\SlipAssignment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;

@@ -2,9 +2,7 @@
 
 namespace App\Providers;
 
-/* @chisel-registration */
 use App\Actions\Fortify\CreateNewUser;
-/* @end-chisel-registration */
 use App\Actions\Fortify\ResetUserPassword;
 use App\Http\Responses\LoginResponse;
 use App\Models\User;
@@ -12,6 +10,7 @@ use App\Support\SensitiveLookup;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -44,6 +43,10 @@ class FortifyServiceProvider extends ServiceProvider
     private function configureActions(): void
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
+        Fortify::confirmPasswordsUsing(
+            fn (User $user, ?string $password): bool => is_string($password)
+                && Hash::check($password, $user->getAuthPassword())
+        );
         Fortify::authenticateUsing(function (Request $request): ?User {
             $credentials = $request->only(Fortify::username(), 'password');
             $provider = Auth::getProvider();
@@ -67,6 +70,19 @@ class FortifyServiceProvider extends ServiceProvider
                 }
             }
 
+            if (! $user instanceof User && filled($request->input(Fortify::username()))) {
+                $counselorMatches = User::query()
+                    ->where('role', 'guidance_counselor')
+                    ->where('name_lookup_hash', SensitiveLookup::hash('name', $username))
+                    ->first();
+
+                if ($counselorMatches instanceof User
+                    && $provider->validateCredentials($counselorMatches, $credentials)
+                    && $counselorMatches->is_active) {
+                    return $counselorMatches;
+                }
+            }
+
             if ($user instanceof User
                 && $provider->validateCredentials($user, $credentials)
                 && $user->is_active) {
@@ -75,9 +91,7 @@ class FortifyServiceProvider extends ServiceProvider
 
             return null;
         });
-        /* @chisel-registration */
         Fortify::createUsersUsing(CreateNewUser::class);
-        /* @end-chisel-registration */
     }
 
     /**
@@ -86,18 +100,10 @@ class FortifyServiceProvider extends ServiceProvider
     private function configureViews(): void
     {
         Fortify::loginView(fn () => view('pages::auth.login'));
-        /* @chisel-email-verification */
         Fortify::verifyEmailView(fn () => view('pages::auth.verify-email'));
-        /* @end-chisel-email-verification */
-        /* @chisel-2fa */
         Fortify::twoFactorChallengeView(fn () => view('pages::auth.two-factor-challenge'));
-        /* @end-chisel-2fa */
-        /* @chisel-password-confirmation */
         Fortify::confirmPasswordView(fn () => view('pages::auth.confirm-password'));
-        /* @end-chisel-password-confirmation */
-        /* @chisel-registration */
         Fortify::registerView(fn () => view('pages::auth.register'));
-        /* @end-chisel-registration */
         Fortify::resetPasswordView(fn () => view('pages::auth.reset-password'));
         Fortify::requestPasswordResetLinkView(fn () => view('pages::auth.forgot-password'));
     }
@@ -123,7 +129,6 @@ class FortifyServiceProvider extends ServiceProvider
                 });
         });
 
-        /* @chisel-passkeys */
         RateLimiter::for('passkeys', function (Request $request) {
             $credentialId = $request->input('credential.id');
 
@@ -131,6 +136,5 @@ class FortifyServiceProvider extends ServiceProvider
                 ($credentialId ?: $request->session()->getId()).'|'.$request->ip(),
             );
         });
-        /* @end-chisel-passkeys */
     }
 }

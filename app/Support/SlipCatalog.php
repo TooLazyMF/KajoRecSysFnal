@@ -204,20 +204,20 @@ class SlipCatalog
     private static function referralStudentGroup(): array
     {
         $group = self::studentGroup([
-                        self::field('sex', 'Sex', 149.5, 55.5, 55, true),
-                        self::checks('referral_reasons', 'Reason for Referral', [
-                            'class_attendance' => ['Class Attendance', 14, 70],
-                            'psychological_testing' => ['Psychological Testing', 14, 75],
-                            'student_housing' => ['Student Housing (Dormitory)', 14, 80],
-                            'academic_deficiencies' => ['Academic Deficiencies', 112, 70],
-                            'scholarship_grant_assistance' => ['Scholarship/Grant Assistance', 112, 75],
-                            'student_employment' => ['Student Employment (SA/SPS)', 112, 80],
-                            'other' => ['Other', 14, 85],
-                        ]),
-                        self::field('date_absent', 'Date/s Absent/Tardy', 75, 70, 48, true, 'text', 1, 1, false),
-                        self::field('days_absent', 'Number of day/s absent/tardy', 0, 0, 1, true, 'number', 1, 1, false),
-                        self::field('other_reason', 'Other Reason', 27, 84.5, 182),
-                    ], false);
+            self::field('sex', 'Sex', 149.5, 55.5, 55, true),
+            self::checks('referral_reasons', 'Reason for Referral', [
+                'class_attendance' => ['Class Attendance', 14, 70],
+                'psychological_testing' => ['Psychological Testing', 14, 75],
+                'student_housing' => ['Student Housing (Dormitory)', 14, 80],
+                'academic_deficiencies' => ['Academic Deficiencies', 112, 70],
+                'scholarship_grant_assistance' => ['Scholarship/Grant Assistance', 112, 75],
+                'student_employment' => ['Student Employment (SA/SPS)', 112, 80],
+                'other' => ['Other', 14, 85],
+            ]),
+            self::field('date_absent', 'Date/s Absent/Tardy', 75, 70, 48, true, 'text', 1, 1, false),
+            self::field('days_absent', 'Number of day/s absent/tardy', 0, 0, 1, true, 'number', 1, 1, false),
+            self::field('other_reason', 'Other Reason', 27, 84.5, 182),
+        ], false);
 
         foreach ($group['fields'] as &$field) {
             if ($field['key'] === 'request_date') {

@@ -3,8 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Appointment;
-use App\Models\SlipInformation;
 use App\Models\SlipAssignment;
+use App\Models\SlipInformation;
 use App\Models\SlipSubmission;
 use App\Models\TeacherReference;
 use App\Models\User;

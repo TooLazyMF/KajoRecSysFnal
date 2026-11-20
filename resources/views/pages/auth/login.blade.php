@@ -1,6 +1,6 @@
 <x-layouts::auth :title="__('Log in')">
     <div class="flex flex-col gap-6">
-        <x-auth-header :title="__('Log in to your account')" :description="__('Enter your email and password below to log in')" />
+        <x-auth-header :title="__('Log in to your account')" :description="__('Enter your email address or account name and password to log in')" />
 
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
@@ -11,26 +11,24 @@
             </div>
         @endif
 
-        {{-- @chisel-passkeys --}}
         <x-passkey-verify />
-        {{-- @end-chisel-passkeys --}}
 
         <form id="login-form" method="POST" action="{{ route('login.root') }}" class="flex flex-col gap-6">
             @csrf
             <input type="hidden" name="login_latitude" id="login-latitude">
             <input type="hidden" name="login_longitude" id="login-longitude">
 
-            <!-- Email or teacher name -->
+            <!-- Email or account name -->
             <flux:input
                 id="login-email"
                 name="email"
-                :label="__('Email address or teacher name')"
+                :label="__('Email address or account name')"
                 :value="old('email')"
                 type="text"
                 required
                 autofocus
                 autocomplete="username"
-                placeholder="Email address or teacher name"
+                placeholder="Email address or account name"
             />
 
             <!-- Password -->
@@ -68,18 +66,18 @@
             </label>
 
             <div class="flex items-center justify-end">
-                <flux:button variant="primary" type="submit" class="w-full" data-test="login-button">
-                    {{ __('Log in') }}
+                <flux:button variant="primary" type="submit" class="w-full" data-test="login-button" data-loading-button data-loading-label="Signing in...">
+                    <span data-button-label>{{ __('Log in') }}</span>
+                    <span class="loading-spinner" data-loading-spinner aria-hidden="true" hidden></span>
                 </flux:button>
+                <span class="loading-status" data-submit-status role="status" aria-live="polite" hidden></span>
             </div>
         </form>
 
-        {{-- @chisel-registration --}}
         <div class="space-x-1 text-sm text-center rtl:space-x-reverse text-zinc-600 dark:text-zinc-400">
             <span>{{ __('Don\'t have an account?') }}</span>
             <flux:link :href="route('register')" wire:navigate>{{ __('Sign up') }}</flux:link>
         </div>
-        {{-- @end-chisel-registration --}}
         <section aria-labelledby="login-about-heading" class="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-300">
             <h2 id="login-about-heading" class="font-semibold text-zinc-900 dark:text-zinc-100">About Us</h2>
             <div class="mt-2 space-y-4">
@@ -152,6 +150,14 @@
         let loginSubmitted = false;
 
         loginForm?.addEventListener('submit', (event) => {
+            const button = loginForm.querySelector('[data-loading-button]');
+            button.disabled = true;
+            button.querySelector('[data-button-label]').textContent = button.dataset.loadingLabel;
+            button.querySelector('[data-loading-spinner]').hidden = false;
+            const status = loginForm.querySelector('[data-submit-status]');
+            status.textContent = button.dataset.loadingLabel;
+            status.hidden = false;
+
             if (!shareLocation?.checked || locationSubmissionStarted) {
                 return;
             }

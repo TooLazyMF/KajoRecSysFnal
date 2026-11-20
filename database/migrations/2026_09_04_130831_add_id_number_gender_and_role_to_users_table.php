@@ -13,13 +13,13 @@ return new class extends Migration
 
             $table->enum('gender', [
                 'male',
-                'female'
+                'female',
             ])->after('id_number');
 
             $table->enum('role', [
                 'student',
                 'teacher',
-                'guidance_counselor'
+                'guidance_counselor',
             ])->default('student')->after('gender');
         });
     }
@@ -30,7 +30,7 @@ return new class extends Migration
             $table->dropColumn([
                 'id_number',
                 'gender',
-                'role'
+                'role',
             ]);
         });
     }

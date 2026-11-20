@@ -137,6 +137,7 @@
                         <div>
                             <p class="text-sm text-zinc-500 dark:text-zinc-400">Enter the number of days first, then select the date and cause for each absence or tardy. Absences with the same cause will be grouped into one referral.</p>
                             <div id="absence_dates" class="mt-3 grid gap-3 sm:grid-cols-2"></div>
+                            <p class="mt-3 text-sm font-medium text-zinc-700 dark:text-zinc-200">Reason for Referral</p>
                             <div id="absence_reasons" class="mt-3 grid gap-3 sm:grid-cols-2"></div>
                         </div>
 

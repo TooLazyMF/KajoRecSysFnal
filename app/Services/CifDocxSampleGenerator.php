@@ -239,7 +239,7 @@ class CifDocxSampleGenerator
             $answer = trim($answers[$index] ?? '');
             $replacement = ($index === 3)
                 ? '4. The sibling (kapatid) I am closest to is my Ivy because she listens to me'
-                : ($index + 1) . '. ' . $prompt . ' ' . $answer;
+                : ($index + 1).'. '.$prompt.' '.$answer;
             $this->replaceParagraphContaining($xpath, $prompt, $replacement);
         }
     }
@@ -261,6 +261,7 @@ class CifDocxSampleGenerator
             for ($index = 1; $index < $texts->length; $index++) {
                 $texts->item($index)->nodeValue = '';
             }
+
             return;
         }
     }
@@ -334,11 +335,13 @@ class CifDocxSampleGenerator
 
                 if (str_contains($candidateText, '___')) {
                     $candidate->nodeValue = preg_replace('/_{3,}/', $value, $candidate->nodeValue, 1) ?? $candidate->nodeValue;
+
                     return;
                 }
             }
 
             $this->replaceInTextNode($xpath, $needle, $value);
+
             return;
         }
     }

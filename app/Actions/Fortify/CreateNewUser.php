@@ -4,13 +4,13 @@ namespace App\Actions\Fortify;
 
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
-use App\Models\User;
 use App\Models\StudentReference;
+use App\Models\User;
 use App\Rules\UniqueEncryptedLookup;
 use App\Support\SensitiveLookup;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
 class CreateNewUser implements CreatesNewUsers
@@ -84,15 +84,21 @@ class CreateNewUser implements CreatesNewUsers
     private function validateStudentReference(array $validated): void
     {
         $normalizedIdNumber = StudentReference::normalizeIdNumber($validated['id_number'] ?? '');
+        if (! StudentReference::query()->exists()) {
+            throw ValidationException::withMessages([
+                'id_number' => 'The guidance counselor has not imported the student list yet. Registration will be available after the student list is imported.',
+            ]);
+        }
+
         $reference = StudentReference::query()
             ->where('id_number_lookup_hash', SensitiveLookup::hash('id_number', $normalizedIdNumber))
             ->first(['id_number', 'name', 'gender']);
 
-        if (StudentReference::query()->exists() && (
+        if (
             $reference === null
             || $this->normalizeName($reference->name) !== $this->normalizeName($this->registrationName($validated))
             || $reference->gender !== $validated['gender']
-        )) {
+        ) {
             throw ValidationException::withMessages([
                 'id_number' => 'Please enter credentials that match the student reference.',
             ]);

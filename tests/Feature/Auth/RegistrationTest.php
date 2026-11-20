@@ -2,12 +2,17 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\StudentReference;
 use App\Models\User;
+use App\Notifications\EmailOtp;
+use App\Services\PendingRegistrationService;
 use App\Support\SensitiveLookup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use App\Notifications\EmailOtp;
+use Illuminate\Http\Request;
+use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Fortify\Features;
+use Symfony\Component\Mailer\Exception\TransportException;
 use Tests\TestCase;
 
 class RegistrationTest extends TestCase
@@ -26,9 +31,10 @@ class RegistrationTest extends TestCase
         $response = $this->get(route('register'));
 
         $response->assertOk()
-            ->assertSee('Student / Teacher ID')
+            ->assertSee('Student ID')
             ->assertSee('Gender')
-            ->assertSee('Use an email address you can access. We will send a verification code; verify it to use your account.');
+            ->assertSee('Use an email address you can access. We will send a verification code; verify it to use your account.')
+            ->assertSee('The guidance counselor has not imported the student list yet.');
     }
 
     public function test_welcome_page_displays_embedded_login_and_registration_panels(): void
@@ -36,7 +42,7 @@ class RegistrationTest extends TestCase
         $this->get(route('home'))
             ->assertOk()
             ->assertSee('data-mode="welcome"', false)
-            ->assertSee(route('login.store'), false)
+            ->assertSee(route('login.root'), false)
             ->assertSee(route('register.store'), false)
             ->assertSee('data-auth-view="login"', false)
             ->assertSee('data-contact-content', false)
@@ -60,6 +66,10 @@ class RegistrationTest extends TestCase
             ->assertSee('aria-controls="login-password"', false)
             ->assertSee('aria-controls="register-password"', false)
             ->assertSee('aria-controls="register-password-confirmation"', false)
+            ->assertSee('data-loading-spinner', false)
+            ->assertSee('aria-live="polite"', false)
+            ->assertSee('The guidance counselor has not imported the student list yet.')
+            ->assertSee('The teacher list has not been imported yet.')
             ->assertSee('--primary: #09ba44;', false)
             ->assertSee('@media (prefers-color-scheme: dark)', false)
             ->assertSee('--primary: #20783e;', false)
@@ -102,6 +112,7 @@ class RegistrationTest extends TestCase
     public function test_new_users_can_register(): void
     {
         Notification::fake();
+        $this->createStudentReference('STUDENT-1001', 'John Doe', 'male');
 
         $response = $this->post(route('register.store'), [
             'first_name' => 'John',
@@ -109,8 +120,8 @@ class RegistrationTest extends TestCase
             'id_number' => 'STUDENT-1001',
             'gender' => 'male',
             'email' => 'test@example.com',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'RegistrationPass123',
+            'password_confirmation' => 'RegistrationPass123',
         ]);
 
         $response->assertSessionHasNoErrors()
@@ -129,9 +140,34 @@ class RegistrationTest extends TestCase
         Notification::assertSentOnDemand(EmailOtp::class);
     }
 
+    public function test_production_registration_rejects_a_log_mailer(): void
+    {
+        $originalEnvironment = $this->app['env'];
+        $originalMailer = config('mail.default');
+        $this->app['env'] = 'production';
+        config(['mail.default' => 'log']);
+
+        try {
+            $request = Request::create('/');
+            $request->setLaravelSession(app('session')->driver());
+
+            app(PendingRegistrationService::class)->begin($request, [
+                'email' => 'log-mailer@example.com',
+                'password' => 'password',
+            ]);
+            $this->fail('A production log mailer must not be accepted for registration OTP delivery.');
+        } catch (TransportException $exception) {
+            $this->assertStringContainsString('real mail transport', $exception->getMessage());
+        } finally {
+            $this->app['env'] = $originalEnvironment;
+            config(['mail.default' => $originalMailer]);
+        }
+    }
+
     public function test_new_users_are_authenticated_only_after_email_verification(): void
     {
         Notification::fake();
+        $this->createStudentReference('STUDENT-1002', 'Jane Doe', 'female');
 
         $this->post(route('register.store'), [
             'first_name' => 'Jane',
@@ -139,8 +175,8 @@ class RegistrationTest extends TestCase
             'id_number' => 'STUDENT-1002',
             'gender' => 'female',
             'email' => 'jane@example.com',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'RegistrationPass123',
+            'password_confirmation' => 'RegistrationPass123',
         ])->assertRedirect(route('home', absolute: false));
 
         $this->assertGuest();
@@ -162,6 +198,7 @@ class RegistrationTest extends TestCase
     public function test_invalid_registration_code_keeps_the_verification_modal_open(): void
     {
         Notification::fake();
+        $this->createStudentReference('STUDENT-OTP', 'Verify Later', 'male');
 
         $this->post(route('register.store'), [
             'first_name' => 'Verify',
@@ -169,8 +206,8 @@ class RegistrationTest extends TestCase
             'id_number' => 'STUDENT-OTP',
             'gender' => 'male',
             'email' => 'verify-later@example.com',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'RegistrationPass123',
+            'password_confirmation' => 'RegistrationPass123',
         ])->assertRedirect(route('home', absolute: false));
 
         $code = $this->registrationOtpCode('verify-later@example.com');
@@ -190,6 +227,7 @@ class RegistrationTest extends TestCase
     public function test_registration_after_logout_does_not_restore_the_previous_account(): void
     {
         Notification::fake();
+        $this->createStudentReference('STUDENT-1003', 'New Student', 'male');
 
         $previousUser = User::factory()->create();
         $this->actingAs($previousUser)->post(route('logout'));
@@ -201,8 +239,8 @@ class RegistrationTest extends TestCase
             'id_number' => 'STUDENT-1003',
             'gender' => 'male',
             'email' => 'new@example.com',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'RegistrationPass123',
+            'password_confirmation' => 'RegistrationPass123',
         ])->assertRedirect(route('home', absolute: false));
 
         $this->assertGuest();
@@ -212,6 +250,7 @@ class RegistrationTest extends TestCase
     public function test_canceling_email_verification_deletes_the_pending_registration(): void
     {
         Notification::fake();
+        $this->createStudentReference('STUDENT-CANCEL', 'Cancel Registration', 'female');
 
         $this->post(route('register.store'), [
             'first_name' => 'Cancel',
@@ -219,8 +258,8 @@ class RegistrationTest extends TestCase
             'id_number' => 'STUDENT-CANCEL',
             'gender' => 'female',
             'email' => 'cancel@example.com',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'RegistrationPass123',
+            'password_confirmation' => 'RegistrationPass123',
         ])->assertRedirect(route('home', absolute: false));
 
         $this->assertDatabaseMissing('users', ['email_lookup_hash' => SensitiveLookup::hash('email', 'cancel@example.com')]);
@@ -249,9 +288,38 @@ class RegistrationTest extends TestCase
         $this->assertDatabaseHas('users', ['id' => $verifiedUser->id]);
     }
 
+    public function test_registration_is_blocked_until_the_student_list_is_imported(): void
+    {
+        $this->from(route('home'))->post(route('register.store'), [
+            'first_name' => 'Jane',
+            'last_name' => 'Doe',
+            'id_number' => 'STUDENT-1004',
+            'gender' => 'female',
+            'email' => 'jane.no-roster@example.com',
+            'password' => 'RegistrationPass123',
+            'password_confirmation' => 'RegistrationPass123',
+        ])->assertRedirect(route('home'))
+            ->assertSessionHasErrors([
+                'id_number' => 'The guidance counselor has not imported the student list yet. Registration will be available after the student list is imported.',
+            ]);
+
+        $this->assertDatabaseMissing('users', [
+            'email_lookup_hash' => SensitiveLookup::hash('email', 'jane.no-roster@example.com'),
+        ]);
+    }
+
+    private function createStudentReference(string $idNumber, string $name, string $gender): void
+    {
+        StudentReference::create([
+            'id_number' => $idNumber,
+            'name' => $name,
+            'gender' => $gender,
+        ]);
+    }
+
     private function registrationOtpCode(string $email): string
     {
-        $notifiable = (new \Illuminate\Notifications\AnonymousNotifiable)->route('mail', $email);
+        $notifiable = (new AnonymousNotifiable)->route('mail', $email);
         $notification = Notification::sent($notifiable, EmailOtp::class)->first();
 
         $this->assertInstanceOf(EmailOtp::class, $notification);

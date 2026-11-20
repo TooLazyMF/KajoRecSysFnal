@@ -38,9 +38,9 @@ class EncryptedJsonArray implements CastsAttributes
     }
 
     /**
-     * @throws JsonException
-     *
      * @return array<string, string|null>
+     *
+     * @throws JsonException
      */
     public function set(Model $model, string $key, mixed $value, array $attributes): array
     {

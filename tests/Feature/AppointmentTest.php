@@ -382,8 +382,7 @@ class AppointmentTest extends TestCase
             ->get(route('guidance.referrals'))
             ->assertOk()
             ->assertSee('Class Admission cannot be sent until the counseling appointment is marked done.');
-        Notification::assertSentTo($teacher, ReferralAppointmentUpdate::class, fn (ReferralAppointmentUpdate $notification, array $channels): bool =>
-            $notification->toDatabase($teacher)['title'] === 'Counseling appointment proposed'
+        Notification::assertSentTo($teacher, ReferralAppointmentUpdate::class, fn (ReferralAppointmentUpdate $notification, array $channels): bool => $notification->toDatabase($teacher)['title'] === 'Counseling appointment proposed'
             && in_array('mail', $channels, true)
         );
 
@@ -402,8 +401,7 @@ class AppointmentTest extends TestCase
             ])
             ->assertSessionHas('status');
         $this->assertSame('reschedule_requested', $appointment->fresh()->status);
-        Notification::assertSentTo($teacher, ReferralAppointmentUpdate::class, fn (ReferralAppointmentUpdate $notification): bool =>
-            $notification->toDatabase($teacher)['title'] === 'Student suggested a different counseling time'
+        Notification::assertSentTo($teacher, ReferralAppointmentUpdate::class, fn (ReferralAppointmentUpdate $notification): bool => $notification->toDatabase($teacher)['title'] === 'Student suggested a different counseling time'
         );
 
         $confirmedDate = now()->addDays(5)->startOfHour();
@@ -429,8 +427,7 @@ class AppointmentTest extends TestCase
             ])
             ->assertRedirect(route('appointments.index'));
         $this->assertSame('done', $appointment->fresh()->status);
-        Notification::assertSentTo($teacher, ReferralAppointmentUpdate::class, fn (ReferralAppointmentUpdate $notification): bool =>
-            $notification->toDatabase($teacher)['title'] === 'Counseling appointment completed'
+        Notification::assertSentTo($teacher, ReferralAppointmentUpdate::class, fn (ReferralAppointmentUpdate $notification): bool => $notification->toDatabase($teacher)['title'] === 'Counseling appointment completed'
         );
     }
 

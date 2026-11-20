@@ -9,6 +9,17 @@
             Use an email address you can access. We will send a verification code; verify it to use your account.
         </p>
 
+        @unless ($hasImportedStudentList)
+            <p role="status" class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                The guidance counselor has not imported the student list yet. Student registration will be available after it is imported.
+            </p>
+        @endunless
+        @unless ($hasImportedTeacherList)
+            <p role="status" class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                The teacher list has not been imported yet. Teacher accounts are managed by the guidance counselor.
+            </p>
+        @endunless
+
         <form method="POST" action="{{ route('register.store') }}" class="flex flex-col gap-6">
             @csrf
             <flux:input name="first_name" :label="__('First name')" :value="old('first_name')" type="text" required autofocus autocomplete="given-name" />
@@ -16,10 +27,10 @@
             <flux:input name="middle_initial" :label="__('M.I. (optional)')" :value="old('middle_initial')" type="text" autocomplete="additional-name" placeholder="e.g. A" />
             <flux:input name="name_extension" :label="__('Name extension (optional)')" :value="old('name_extension')" type="text" placeholder="e.g. Jr., III" />
 
-            <!-- Student / Teacher ID -->
+            <!-- Student ID -->
             <flux:input
                 name="id_number"
-                :label="__('Student / Teacher ID')"
+                :label="__('Student ID')"
                 :value="old('id_number')"
                 type="text"
                 required

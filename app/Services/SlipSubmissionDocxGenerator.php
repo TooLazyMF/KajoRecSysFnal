@@ -251,8 +251,7 @@ class SlipSubmissionDocxGenerator
         mixed $value,
         string $excludedPrefix = '',
         bool $appendWhenNoBlank = false
-    ): void
-    {
+    ): void {
         if ($value === null || $value === '') {
             return;
         }
@@ -314,8 +313,7 @@ class SlipSubmissionDocxGenerator
         int $offset,
         int $length,
         string $replacement
-    ): void
-    {
+    ): void {
         $nodes = $xpath->query('.//w:t', $paragraph);
         $segments = [];
         $position = 0;

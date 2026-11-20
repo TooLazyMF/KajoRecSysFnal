@@ -4,10 +4,10 @@ namespace App\Session;
 
 use App\Support\SensitiveLookup;
 use Illuminate\Contracts\Container\Container;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Session\DatabaseSessionHandler;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Contracts\Encryption\DecryptException;
 
 class EncryptedDatabaseSessionHandler extends DatabaseSessionHandler
 {

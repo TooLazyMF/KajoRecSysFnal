@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Appointment;
 use App\Models\SlipAssignment;
 use App\Models\SlipSubmission;
-use App\Models\Appointment;
-use Illuminate\Support\Facades\DB;
 use App\Support\SlipCatalog;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class StudentDashboardController extends Controller

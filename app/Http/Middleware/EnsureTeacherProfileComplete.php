@@ -24,6 +24,17 @@ class EnsureTeacherProfileComplete
             return to_route('teacher.profile.edit');
         }
 
+        if ($user instanceof User
+            && $user->role === 'guidance_counselor'
+            && (
+                ! filled($user->email)
+                || $user->name === 'Administrator'
+                || $user->must_change_password
+            )
+            && ! $request->routeIs('counselor.profile.edit', 'counselor.profile.update', 'logout')) {
+            return to_route('counselor.profile.edit');
+        }
+
         return $next($request);
     }
 }

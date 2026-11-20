@@ -4,20 +4,22 @@ use App\Http\Controllers\AccountActivityController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\DataBackupController;
 use App\Http\Controllers\EmailVerificationOtpController;
+use App\Http\Controllers\GuidanceCounselorProfileController;
 use App\Http\Controllers\LoginTwoFactorOtpController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PasswordResetOtpController;
 use App\Http\Controllers\RegistrationController;
-use App\Http\Controllers\SlipSubmissionController;
 use App\Http\Controllers\SlipInformationController;
+use App\Http\Controllers\SlipSubmissionController;
 use App\Http\Controllers\StudentDashboardController;
 use App\Http\Controllers\StudentRecordController;
 use App\Http\Controllers\TeacherProfileController;
 use App\Http\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
+use Laravel\Fortify\Http\Controllers\AuthenticatedSessionController;
 
 Route::view('/', 'welcome')->name('home');
-Route::post('/', [\Laravel\Fortify\Http\Controllers\AuthenticatedSessionController::class, 'store'])
+Route::post('/', [AuthenticatedSessionController::class, 'store'])
     ->middleware(['guest', 'throttle:login'])
     ->name('login.root');
 Route::post('register', [RegistrationController::class, 'store'])
@@ -63,6 +65,13 @@ Route::middleware(['auth', 'role:teacher'])->group(function () {
         ->name('teacher.profile.edit');
     Route::put('teacher/complete-profile', [TeacherProfileController::class, 'update'])
         ->name('teacher.profile.update');
+});
+
+Route::middleware(['auth', 'role:guidance_counselor'])->group(function () {
+    Route::get('guidance/complete-profile', [GuidanceCounselorProfileController::class, 'edit'])
+        ->name('counselor.profile.edit');
+    Route::put('guidance/complete-profile', [GuidanceCounselorProfileController::class, 'update'])
+        ->name('counselor.profile.update');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

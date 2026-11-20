@@ -29,8 +29,8 @@ class AccountSessionLogTest extends TestCase
 
         $log = AccountSessionLog::query()->where('user_id', $student->id)->sole();
         $this->assertSame('Chrome on Windows', $log->device_name);
-        $this->assertSame('14.5995000', $log->latitude);
-        $this->assertSame('120.9842000', $log->longitude);
+        $this->assertSame('14.5995', $log->latitude);
+        $this->assertSame('120.9842', $log->longitude);
         $this->assertNull($log->logged_out_at);
 
         $this->post(route('logout'))->assertRedirect('/');
@@ -97,7 +97,7 @@ class AccountSessionLogTest extends TestCase
 
         $this->travel(10)->minutes();
         $this->get(route('student.dashboard'))
-            ->assertRedirect(route('home'))
+            ->assertRedirect(route('login'))
             ->assertSessionHas('status', 'You were logged out after 10 minutes of inactivity.');
 
         $this->assertGuest();

@@ -27,6 +27,16 @@ class LoginResponse implements LoginResponseContract
             return redirect()->route('teacher.profile.edit');
         }
 
+        if ($user instanceof User
+            && $user->role === 'guidance_counselor'
+            && (
+                ! filled($user->email)
+                || $user->name === 'Administrator'
+                || $user->must_change_password
+            )) {
+            return redirect()->route('counselor.profile.edit');
+        }
+
         return match ($user->role) {
             'guidance_counselor' => redirect()->route('guidance.dashboard'),
             'student' => redirect()->route('student.dashboard'),

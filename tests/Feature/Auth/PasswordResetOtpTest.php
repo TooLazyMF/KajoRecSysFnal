@@ -30,13 +30,13 @@ class PasswordResetOtpTest extends TestCase
         $this->from(route('password.request'))
             ->post(route('password.update'), [
                 'otp' => $otp,
-                'password' => 'new-secure-password',
-                'password_confirmation' => 'new-secure-password',
+                'password' => 'newSecurePassword123',
+                'password_confirmation' => 'newSecurePassword123',
             ])
             ->assertRedirect(route('login'))
             ->assertSessionHasNoErrors();
 
-        $this->assertTrue(Hash::check('new-secure-password', $user->fresh()->password));
+        $this->assertTrue(Hash::check('newSecurePassword123', $user->fresh()->password));
     }
 
     public function test_password_reset_code_is_not_sent_for_unverified_or_inactive_accounts(): void
@@ -77,8 +77,8 @@ class PasswordResetOtpTest extends TestCase
         $this->from(route('password.request'))
             ->post(route('password.update'), [
                 'otp' => '123456',
-                'password' => 'new-secure-password',
-                'password_confirmation' => 'new-secure-password',
+                'password' => 'newSecurePassword123',
+                'password_confirmation' => 'newSecurePassword123',
             ])
             ->assertRedirect(route('password.request'))
             ->assertSessionHasErrors('otp');
@@ -99,13 +99,13 @@ class PasswordResetOtpTest extends TestCase
         $this->from(route('password.request'))
             ->post(route('password.update'), [
                 'otp' => $otp,
-                'password' => 'new-secure-password',
-                'password_confirmation' => 'new-secure-password',
+                'password' => 'newSecurePassword123',
+                'password_confirmation' => 'newSecurePassword123',
             ])
             ->assertRedirect(route('login'))
             ->assertSessionHasNoErrors();
 
-        $this->assertTrue(Hash::check('new-secure-password', $user->fresh()->password));
+        $this->assertTrue(Hash::check('newSecurePassword123', $user->fresh()->password));
     }
 
     public function test_invalid_otp_can_be_retried_without_changing_the_password(): void
@@ -121,8 +121,8 @@ class PasswordResetOtpTest extends TestCase
         $this->from(route('password.request'))
             ->post(route('password.update'), [
                 'otp' => $invalidOtp,
-                'password' => 'new-secure-password',
-                'password_confirmation' => 'new-secure-password',
+                'password' => 'newSecurePassword123',
+                'password_confirmation' => 'newSecurePassword123',
             ])
             ->assertRedirect(route('password.request'))
             ->assertSessionHasErrors('otp');
@@ -136,12 +136,12 @@ class PasswordResetOtpTest extends TestCase
         $this->from(route('password.request'))
             ->post(route('password.update'), [
                 'otp' => $validOtp,
-                'password' => 'new-secure-password',
-                'password_confirmation' => 'new-secure-password',
+                'password' => 'newSecurePassword123',
+                'password_confirmation' => 'newSecurePassword123',
             ])
             ->assertRedirect(route('login'))
             ->assertSessionHasNoErrors();
 
-        $this->assertTrue(Hash::check('new-secure-password', $user->fresh()->password));
+        $this->assertTrue(Hash::check('newSecurePassword123', $user->fresh()->password));
     }
 }

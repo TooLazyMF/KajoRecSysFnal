@@ -4,17 +4,17 @@ namespace Tests\Feature;
 
 use App\Models\Appointment;
 use App\Models\DatabaseNotification;
-use App\Models\StudentReference;
 use App\Models\SlipAssignment;
 use App\Models\SlipInformation;
 use App\Models\SlipSubmission;
+use App\Models\StudentReference;
 use App\Models\User;
-use App\Support\SensitiveLookup;
 use App\Session\EncryptedDatabaseSessionHandler;
+use App\Support\SensitiveLookup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 

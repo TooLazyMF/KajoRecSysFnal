@@ -8,7 +8,6 @@ use App\Rules\UniqueEncryptedLookup;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class TeacherProfileController extends Controller

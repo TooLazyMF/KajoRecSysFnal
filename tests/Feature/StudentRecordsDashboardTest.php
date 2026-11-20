@@ -210,7 +210,10 @@ class StudentRecordsDashboardTest extends TestCase
 
     public function test_students_records_page_is_only_available_to_guidance_counselors(): void
     {
-        $student = User::factory()->create(['role' => 'student']);
+        $student = User::factory()->create([
+            'name' => 'Referral Test Student',
+            'role' => 'student',
+        ]);
 
         $this->actingAs($student)
             ->get(route('guidance.students-records'))

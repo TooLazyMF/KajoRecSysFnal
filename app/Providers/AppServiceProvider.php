@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Cache\EncryptedDatabaseStore;
+use App\Models\StudentReference;
+use App\Models\TeacherReference;
 use App\Session\EncryptedDatabaseSessionHandler;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
@@ -10,6 +12,7 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use InvalidArgumentException;
@@ -33,6 +36,13 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureBrevoMailer();
+
+        View::composer(['welcome', 'pages::auth.register'], function (\Illuminate\View\View $view): void {
+            $view->with([
+                'hasImportedStudentList' => StudentReference::query()->exists(),
+                'hasImportedTeacherList' => TeacherReference::query()->exists(),
+            ]);
+        });
     }
 
     /**

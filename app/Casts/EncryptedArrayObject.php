@@ -2,12 +2,12 @@
 
 namespace App\Casts;
 
+use ArrayObject;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Crypt;
 use InvalidArgumentException;
 use JsonException;
-use ArrayObject;
 
 /**
  * @implements CastsAttributes<ArrayObject<string, mixed>|null, ArrayObject<string, mixed>|array<string, mixed>|null>
@@ -33,9 +33,9 @@ class EncryptedArrayObject implements CastsAttributes
     }
 
     /**
-     * @throws JsonException
-     *
      * @return array<string, string|null>
+     *
+     * @throws JsonException
      */
     public function set(Model $model, string $key, mixed $value, array $attributes): array
     {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Fortify\CreateNewUser;
 use App\Models\User;
 use App\Services\AccountSessionLogger;
 use App\Services\EmailOtpService;
@@ -75,7 +76,7 @@ class EmailVerificationOtpController extends Controller
             return back()
                 ->with('mail_transport_error', true)
                 ->withErrors([
-                    'email' => 'Please check your internet connection and try again. We could not send the verification email.',
+                    'email' => 'Email delivery is unavailable. Please try again later or contact the administrator.',
                 ]);
         }
     }
@@ -85,7 +86,7 @@ class EmailVerificationOtpController extends Controller
         EmailOtpService $otp,
         AccountSessionLogger $sessionLogger,
         PendingRegistrationService $pendingRegistration,
-        \App\Actions\Fortify\CreateNewUser $createNewUser,
+        CreateNewUser $createNewUser,
     ): RedirectResponse {
         $request->validate([
             'otp' => ['required', 'digits:6'],

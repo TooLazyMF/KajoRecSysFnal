@@ -1,0 +1,224 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="1380" viewBox="0 0 1900 1380" role="img" aria-labelledby="title description">
+  <title id="title">KajoRecSys Level 1 Data Flow Diagram</title>
+  <desc id="description">Level 1 data flow diagram for KajoRecSys, showing student, teacher, and Guidance Office interactions with authentication, forms, referrals, appointments, and records processes, plus persistent data stores and email delivery.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#15803d"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#7c3aed"/>
+    </marker>
+    <style>
+      text { font-family: Inter, "Segoe UI", Arial, sans-serif; fill: #172033; }
+      .title { font-size: 38px; font-weight: 750; letter-spacing: -0.5px; }
+      .subtitle { font-size: 17px; fill: #526174; }
+      .section { font-size: 12px; font-weight: 700; letter-spacing: 1.4px; fill: #64748b; }
+      .boundary-label { font-size: 13px; font-weight: 700; letter-spacing: 1px; fill: #15803d; }
+      .entity-title { font-size: 18px; font-weight: 700; }
+      .entity-copy { font-size: 13px; fill: #526174; }
+      .process-number { font-size: 12px; font-weight: 700; letter-spacing: 1px; fill: #15803d; }
+      .process-title { font-size: 17px; font-weight: 700; }
+      .process-copy { font-size: 13px; fill: #526174; }
+      .store-title { font-size: 15px; font-weight: 700; }
+      .store-copy { font-size: 12px; fill: #526174; }
+      .flow { fill: none; stroke: #475569; stroke-width: 2.6; marker-end: url(#arrow); }
+      .flow-student { fill: none; stroke: #15803d; stroke-width: 2.2; marker-end: url(#arrow-green); }
+      .flow-teacher { fill: none; stroke: #2563eb; stroke-width: 2.2; marker-end: url(#arrow-blue); }
+      .flow-guidance { fill: none; stroke: #7c3aed; stroke-width: 2.2; marker-end: url(#arrow-purple); }
+      .flow-label { font-size: 12px; font-weight: 600; fill: #334155; paint-order: stroke; stroke: #f8fafc; stroke-width: 7px; stroke-linejoin: round; }
+      .footer { font-size: 12px; fill: #64748b; }
+    </style>
+  </defs>
+
+  <rect width="1900" height="1320" fill="#f8fafc"/>
+  <rect width="1900" height="10" fill="#16a34a"/>
+  <text x="64" y="68" class="title">KajoRecSys — Level 1 Data Flow Diagram</text>
+  <text x="64" y="99" class="subtitle">Role-based student support, forms, referrals, appointments, and record management</text>
+
+  <text x="64" y="157" class="section">EXTERNAL ENTITIES</text>
+  <text x="455" y="157" class="boundary-label">KAJORECSYS WEB APPLICATION</text>
+  <text x="1280" y="157" class="section">PERSISTENT DATA STORES</text>
+
+  <rect x="420" y="175" width="1050" height="1085" rx="22" fill="#f0fdf4" fill-opacity="0.45" stroke="#86efac" stroke-width="2" stroke-dasharray="9 7"/>
+
+  <g>
+    <rect x="64" y="245" width="270" height="130" rx="14" fill="#ffffff" stroke="#86efac" stroke-width="2"/>
+    <circle cx="100" cy="282" r="18" fill="#dcfce7"/>
+    <text x="100" y="288" text-anchor="middle" class="entity-title" fill="#15803d">S</text>
+    <text x="130" y="287" class="entity-title">Student</text>
+    <text x="88" y="324" class="entity-copy">Account, form requests, completed</text>
+    <text x="88" y="345" class="entity-copy">submissions, appointment requests</text>
+
+    <rect x="64" y="585" width="270" height="130" rx="14" fill="#ffffff" stroke="#93c5fd" stroke-width="2"/>
+    <circle cx="100" cy="622" r="18" fill="#dbeafe"/>
+    <text x="100" y="628" text-anchor="middle" class="entity-title" fill="#2563eb">T</text>
+    <text x="130" y="627" class="entity-title">Teacher</text>
+    <text x="88" y="664" class="entity-copy">Account, student assignments,</text>
+    <text x="88" y="685" class="entity-copy">referrals, and follow-up</text>
+
+    <rect x="1530" y="465" width="300" height="140" rx="14" fill="#ffffff" stroke="#c4b5fd" stroke-width="2"/>
+    <circle cx="1570" cy="505" r="18" fill="#ede9fe"/>
+    <text x="1570" y="511" text-anchor="middle" class="entity-title" fill="#7c3aed">G</text>
+    <text x="1600" y="510" class="entity-title">Guidance Office</text>
+    <text x="1554" y="548" class="entity-copy">Form review, referral and appointment</text>
+    <text x="1554" y="569" class="entity-copy">decisions, records and user management</text>
+
+    <rect x="1530" y="190" width="300" height="120" rx="14" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+    <text x="1554" y="230" class="entity-title">Email service</text>
+    <text x="1554" y="261" class="entity-copy">Receives outbound verification,</text>
+    <text x="1554" y="282" class="entity-copy">password-reset, and account messages</text>
+  </g>
+
+  <g>
+    <rect x="465" y="205" width="300" height="140" rx="18" fill="#ffffff" stroke="#86efac" stroke-width="2"/>
+    <text x="489" y="235" class="process-number">PROCESS 1.0</text>
+    <text x="489" y="266" class="process-title">Manage accounts &amp; access</text>
+    <text x="489" y="296" class="process-copy">Register, authenticate, verify OTP,</text>
+    <text x="489" y="317" class="process-copy">manage roles and sessions</text>
+
+    <rect x="465" y="430" width="300" height="150" rx="18" fill="#ffffff" stroke="#86efac" stroke-width="2"/>
+    <text x="489" y="460" class="process-number">PROCESS 2.0</text>
+    <text x="489" y="491" class="process-title">Manage forms &amp; assignments</text>
+    <text x="489" y="521" class="process-copy">Request slips, create and route</text>
+    <text x="489" y="542" class="process-copy">assignments, track workflow status</text>
+
+    <rect x="845" y="430" width="310" height="150" rx="18" fill="#ffffff" stroke="#86efac" stroke-width="2"/>
+    <text x="869" y="460" class="process-number">PROCESS 3.0</text>
+    <text x="869" y="491" class="process-title">Submit &amp; review forms</text>
+    <text x="869" y="521" class="process-copy">Capture answers and attachments;</text>
+    <text x="869" y="542" class="process-copy">review, approve, or return submissions</text>
+
+    <rect x="845" y="700" width="310" height="150" rx="18" fill="#ffffff" stroke="#86efac" stroke-width="2"/>
+    <text x="869" y="730" class="process-number">PROCESS 4.0</text>
+    <text x="869" y="761" class="process-title">Manage referrals &amp; appointments</text>
+    <text x="869" y="791" class="process-copy">Record referral actions, schedule</text>
+    <text x="869" y="812" class="process-copy">appointments, save outcomes and status</text>
+
+    <rect x="465" y="900" width="300" height="150" rx="18" fill="#ffffff" stroke="#86efac" stroke-width="2"/>
+    <text x="489" y="930" class="process-number">PROCESS 5.0</text>
+    <text x="489" y="961" class="process-title">Manage records &amp; administration</text>
+    <text x="489" y="991" class="process-copy">View history and reports, import rosters,</text>
+    <text x="489" y="1012" class="process-copy">manage accounts, backup or restore data</text>
+  </g>
+
+  <g>
+    <rect x="1220" y="205" width="220" height="125" rx="5" fill="#ffffff" stroke="#64748b" stroke-width="1.8"/>
+    <path d="M1232 205V330M1240 205V330" stroke="#64748b" stroke-width="1.5"/>
+    <text x="1260" y="237" class="store-title">D1  Accounts</text>
+    <text x="1260" y="267" class="store-copy">Users, roles, passkeys,</text>
+    <text x="1260" y="286" class="store-copy">session and activity logs</text>
+
+    <rect x="1220" y="440" width="220" height="150" rx="5" fill="#ffffff" stroke="#64748b" stroke-width="1.8"/>
+    <path d="M1232 440V590M1240 440V590" stroke="#64748b" stroke-width="1.5"/>
+    <text x="1260" y="472" class="store-title">D2  Forms &amp; workflow</text>
+    <text x="1260" y="502" class="store-copy">Slip information, submissions,</text>
+    <text x="1260" y="521" class="store-copy">assignments, review decisions</text>
+    <text x="1260" y="552" class="store-copy">and referral notes</text>
+
+    <rect x="1220" y="710" width="220" height="125" rx="5" fill="#ffffff" stroke="#64748b" stroke-width="1.8"/>
+    <path d="M1232 710V835M1240 710V835" stroke="#64748b" stroke-width="1.5"/>
+    <text x="1260" y="742" class="store-title">D3  Support records</text>
+    <text x="1260" y="772" class="store-copy">Appointments, outcomes,</text>
+    <text x="1260" y="791" class="store-copy">and notifications</text>
+
+    <rect x="1220" y="920" width="220" height="110" rx="5" fill="#ffffff" stroke="#64748b" stroke-width="1.8"/>
+    <path d="M1232 920V1030M1240 920V1030" stroke="#64748b" stroke-width="1.5"/>
+    <text x="1260" y="952" class="store-title">D4  Reference data</text>
+    <text x="1260" y="982" class="store-copy">Imported student and</text>
+    <text x="1260" y="1001" class="store-copy">teacher rosters</text>
+
+    <rect x="1220" y="1080" width="220" height="110" rx="5" fill="#ffffff" stroke="#64748b" stroke-width="1.8"/>
+    <path d="M1232 1080V1190M1240 1080V1190" stroke="#64748b" stroke-width="1.5"/>
+    <text x="1260" y="1112" class="store-title">D5  File storage</text>
+    <text x="1260" y="1142" class="store-copy">Uploaded attachments, generated</text>
+    <text x="1260" y="1161" class="store-copy">PDFs and documents</text>
+  </g>
+
+  <g>
+    <path class="flow-student" d="M334 270H400V246H465"/>
+    <text x="345" y="258" class="flow-label">credentials / registration</text>
+    <path class="flow" d="M465 310H400V360H334"/>
+    <text x="345" y="351" class="flow-label">verification / access</text>
+    <path class="flow" d="M765 235H1180V185H1490V250H1530"/>
+    <text x="1015" y="178" class="flow-label">verification / reset emails</text>
+    <path class="flow" d="M765 260H1220"/>
+    <text x="967" y="251" class="flow-label">account and session data</text>
+    <path class="flow" d="M1220 291H1180V335H765"/>
+    <text x="960" y="328" class="flow-label">account / role lookup</text>
+
+    <path class="flow-student" d="M334 300H380V465H465"/>
+    <text x="345" y="390" class="flow-label">form request</text>
+    <path class="flow-teacher" d="M334 635H385V535H465"/>
+    <text x="345" y="617" class="flow-label">assignment / referral</text>
+    <path class="flow-guidance" d="M1530 485H1510V180H40V500H465"/>
+    <text x="850" y="173" class="flow-label">form definitions / routing</text>
+    <path class="flow" d="M600 430V350H1420V440"/>
+    <text x="960" y="343" class="flow-label">assignment data</text>
+    <path class="flow" d="M1260 440V380H650V430"/>
+    <text x="960" y="373" class="flow-label">assigned forms / status</text>
+    <path class="flow" d="M765 505H845"/>
+    <text x="771" y="496" class="flow-label">assigned form</text>
+    <path class="flow-student" d="M334 330H385V400H1000V430"/>
+    <text x="560" y="392" class="flow-label">completed answers</text>
+    <path class="flow-guidance" d="M1530 520H1460V420H1080V430"/>
+    <text x="1260" y="413" class="flow-label">review decision / corrections</text>
+    <path class="flow" d="M1120 430V400H1490V600H1530"/>
+    <text x="1260" y="393" class="flow-label">review status / result</text>
+    <path class="flow" d="M1155 470H1220"/>
+    <text x="1160" y="463" class="flow-label">submission / review status</text>
+    <path class="flow" d="M1220 575H1155"/>
+    <text x="1162" y="595" class="flow-label">saved form records</text>
+    <path class="flow" d="M1155 560H1180V640H400V375H334"/>
+    <text x="740" y="633" class="flow-label">form status / corrections</text>
+
+    <path class="flow-teacher" d="M334 680H410V760H845"/>
+    <text x="420" y="751" class="flow-label">student referral</text>
+    <path class="flow-student" d="M334 350H395V800H845"/>
+    <text x="405" y="789" class="flow-label">appointment request / response</text>
+    <path class="flow-guidance" d="M1530 570H1450V665H1180V735H1155"/>
+    <text x="1270" y="658" class="flow-label">schedule / review / outcome</text>
+    <path class="flow" d="M1155 805H1195V885H1470V600H1530"/>
+    <text x="1265" y="878" class="flow-label">appointment status / outcome</text>
+    <path class="flow" d="M1155 745H1220"/>
+    <text x="1160" y="738" class="flow-label">appointment data</text>
+    <path class="flow" d="M1220 805H1195V815H1155"/>
+    <text x="1160" y="808" class="flow-label">status / notifications</text>
+    <path class="flow" d="M845 810H800V730H400V715H334"/>
+    <text x="480" y="723" class="flow-label">referral status / follow-up</text>
+
+    <path class="flow-guidance" d="M1530 540H1520V1280H600V1050"/>
+    <text x="820" y="1273" class="flow-label">report requests / user administration</text>
+    <path class="flow" d="M650 1050V1210H1478V590H1530"/>
+    <text x="1188" y="1203" class="flow-label">administration / report results</text>
+    <path class="flow" d="M765 960H1220"/>
+    <text x="960" y="953" class="flow-label">roster updates</text>
+    <path class="flow" d="M1220 1000H1185V995H765"/>
+    <text x="961" y="1008" class="flow-label">reference records</text>
+    <path class="flow" d="M1440 550H1460V870H600V900"/>
+    <text x="900" y="863" class="flow-label">reviewed form records / report data</text>
+    <path class="flow" d="M845 830H400V960H465"/>
+    <text x="500" y="823" class="flow-label">appointment history</text>
+    <path class="flow" d="M700 1050V1080H1185V1120H1220"/>
+    <text x="950" y="1073" class="flow-label">backup files / exports</text>
+    <path class="flow" d="M1220 1160H1190V1040H765"/>
+    <text x="930" y="1052" class="flow-label">restore / imported data</text>
+  </g>
+
+  <g>
+    <path d="M64 1350H98" class="flow-student"/>
+    <text x="110" y="1355" class="footer">Student data flow</text>
+    <path d="M260 1350H294" class="flow-teacher"/>
+    <text x="306" y="1355" class="footer">Teacher data flow</text>
+    <path d="M465 1350H499" class="flow-guidance"/>
+    <text x="511" y="1355" class="footer">Guidance data flow</text>
+    <path d="M670 1350H704" class="flow"/>
+    <text x="716" y="1355" class="footer">System / data-store flow</text>
+    <text x="1110" y="1355" class="footer">Stores and workflows shown are based on application routes and database migrations.</text>
+  </g>
+</svg>

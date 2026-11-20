@@ -10,11 +10,11 @@ class RoleMiddleware
 {
     public function handle(Request $request, Closure $next, ...$roles): Response
     {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             return redirect()->route('home');
         }
 
-        if (!in_array(auth()->user()->role, $roles)) {
+        if (! in_array(auth()->user()->role, $roles)) {
             return match (auth()->user()->role) {
                 'guidance_counselor' => redirect()->route('guidance.dashboard'),
                 'student' => redirect()->route('student.dashboard'),
