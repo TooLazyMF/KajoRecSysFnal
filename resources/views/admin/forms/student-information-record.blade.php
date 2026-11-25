@@ -133,6 +133,10 @@
                                 id="requester_id"
                                 name="requester_id"
                                 value="{{ auth()->user()->id_number }}"
+                                inputmode="numeric"
+                                pattern="[0-9]*"
+                                maxlength="255"
+                                data-digits-only
                                 class="w-full rounded-md border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-[#176b3a] focus:ring-[#176b3a]"
                             >
                         </div>
@@ -166,9 +170,12 @@
                             </label>
 
                             <input
-                                type="text"
+                                type="tel"
                                 id="contact"
                                 name="contact"
+                                inputmode="numeric"
+                                pattern="[0-9]*"
+                                data-digits-only
                                 class="w-full rounded-md border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-[#176b3a] focus:ring-[#176b3a]"
                             >
                         </div>
@@ -229,6 +236,10 @@
                                 id="student_id"
                                 name="student_id"
                                 placeholder="Enter student ID"
+                                inputmode="numeric"
+                                pattern="[0-9]*"
+                                maxlength="255"
+                                data-digits-only
                                 class="w-full rounded-md border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-[#176b3a] focus:ring-[#176b3a]"
                                 required
                             >

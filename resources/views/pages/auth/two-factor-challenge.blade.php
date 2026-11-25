@@ -113,7 +113,7 @@
                 @if (session('email_otp_sent'))
                     <form method="POST" action="{{ route('two-factor.email.verify') }}" class="mb-4 space-y-4">
                         @csrf
-                        <flux:input name="otp" :label="__('Email code')" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code" />
+                        <flux:input name="otp" :label="__('Email code')" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" data-digits-only required autocomplete="one-time-code" />
                         <flux:button variant="primary" type="submit" class="w-full">
                             {{ __('Sign in with email code') }}
                         </flux:button>

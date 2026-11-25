@@ -294,7 +294,7 @@ class SlipCatalog
         return [
             'title' => 'Student Information',
             'fields' => [
-                self::field('student_id', 'Student ID Number', 40, 54 + $studentInfoYOffset, 105, true),
+                [...self::field('student_id', 'Student ID Number', 40, 54 + $studentInfoYOffset, 105, true), 'readonly' => true],
                 self::field('request_date', 'Date', 150, 54 + $studentInfoYOffset, 45, false, 'date'),
                 self::field('student_name', 'Name of Student', 43, 59 + $studentInfoYOffset, 152, true),
                 self::field('program_year', 'Degree Program and Year Level', 60, 64 + $studentInfoYOffset, 135, true),

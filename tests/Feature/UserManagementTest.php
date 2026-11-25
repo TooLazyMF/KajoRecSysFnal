@@ -100,6 +100,17 @@ class UserManagementTest extends TestCase
                 'first_name' => 'Updated',
                 'last_name' => 'Teacher',
                 'middle_initial' => 'U.',
+                'teacher_id' => 'TEACHER-001',
+                'email' => $teacher->email,
+                'counselor_password' => 'password',
+            ])
+            ->assertSessionHasErrors('teacher_id');
+
+        $this->actingAs($counselor)
+            ->put(route('admin.teachers.update', $teacher), [
+                'first_name' => 'Updated',
+                'last_name' => 'Teacher',
+                'middle_initial' => 'U.',
                 'teacher_id' => $teacher->id_number,
                 'email' => $teacher->email,
                 'counselor_password' => 'password',
@@ -173,14 +184,14 @@ class UserManagementTest extends TestCase
             'id_number' => 'TEACHER-001',
             'password' => 'initial-password',
             'password_confirmation' => 'initial-password',
-        ])->assertSessionHasErrors('password');
+        ])->assertSessionHasErrors(['id_number', 'password']);
 
         $this->assertNull($teacher->fresh()->email);
         $this->assertTrue($teacher->fresh()->must_change_password);
 
         $this->put(route('teacher.profile.update'), [
             'email' => 'new.teacher@example.com',
-            'id_number' => 'TEACHER-001',
+            'id_number' => '10001',
             'password' => 'UpdatedTeacher123',
             'password_confirmation' => 'UpdatedTeacher123',
         ])->assertRedirect(route('verification.notice'));
@@ -189,7 +200,7 @@ class UserManagementTest extends TestCase
 
         $teacher->refresh();
         $this->assertSame('new.teacher@example.com', $teacher->email);
-        $this->assertSame('TEACHER-001', $teacher->id_number);
+        $this->assertSame('10001', $teacher->id_number);
         $this->assertFalse($teacher->hasVerifiedEmail());
         $this->assertFalse($teacher->must_change_password);
         $this->assertTrue(Hash::check('UpdatedTeacher123', $teacher->password));
@@ -221,7 +232,7 @@ class UserManagementTest extends TestCase
         $teacher = User::forceCreate([
             'name' => 'Verified Teacher',
             'email' => 'verified.teacher@example.com',
-            'id_number' => 'TEACHER-VERIFIED-001',
+            'id_number' => '10002',
             'gender' => null,
             'role' => 'teacher',
             'password' => 'TeacherPassword123',

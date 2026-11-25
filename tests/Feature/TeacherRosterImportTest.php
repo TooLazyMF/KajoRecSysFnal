@@ -58,7 +58,7 @@ class TeacherRosterImportTest extends TestCase
 
         $this->from(route('teacher.register'))->post(route('teacher.register.store'), [
             'teacher_name' => 'Other Teacher',
-            'teacher_id' => 'TEACHER-OTHER-001',
+            'teacher_id' => '20001',
             'email' => 'other.teacher@gmail.com',
             'password' => 'initialPassword123',
             'password_confirmation' => 'initialPassword123',
@@ -72,7 +72,7 @@ class TeacherRosterImportTest extends TestCase
 
         $this->post(route('teacher.register.store'), [
             'teacher_name' => 'New T. Teacher',
-            'teacher_id' => 'TEACHER-NEW-001',
+            'teacher_id' => '20002',
             'email' => 'new.teacher@gmail.com',
             'password' => 'initialPassword123',
             'password_confirmation' => 'initialPassword123',
@@ -108,7 +108,7 @@ class TeacherRosterImportTest extends TestCase
         $this->from(route('teacher.register'))
             ->post(route('teacher.register.store'), [
                 'teacher_name' => 'Legacy Teacher',
-                'teacher_id' => 'TEACHER-LEGACY-001',
+                'teacher_id' => '20003',
                 'email' => 'legacy.teacher@example.com',
                 'password' => 'initialPassword123',
                 'password_confirmation' => 'initialPassword123',

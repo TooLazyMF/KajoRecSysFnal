@@ -52,7 +52,7 @@ class TeacherAccountRequestController extends Controller
 
         $validated = $request->validate([
             'teacher_name' => ['required', 'string', 'max:255'],
-            'teacher_id' => ['required', 'string', 'max:255', new UniqueEncryptedLookup('users', 'id_number')],
+            'teacher_id' => ['required', 'string', 'max:255', 'regex:/\A[0-9]+\z/D', new UniqueEncryptedLookup('users', 'id_number')],
             'email' => ['required', 'email', 'max:255', new UniqueEncryptedLookup('users', 'email')],
             'id_photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'password' => $this->passwordRules(),

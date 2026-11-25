@@ -14,7 +14,7 @@
 
         <form method="POST" action="{{ route('verification.otp.verify') }}" class="flex flex-col gap-4">
             @csrf
-            <flux:input name="otp" :label="__('6-digit code')" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code" />
+            <flux:input name="otp" :label="__('6-digit code')" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" data-digits-only required autocomplete="one-time-code" />
             <flux:button type="submit" variant="primary" class="w-full">
                 {{ __('Verify email') }}
             </flux:button>

@@ -37,6 +37,10 @@
                     :label="__('Teacher ID number')"
                     :value="old('id_number', $user->id_number)"
                     type="text"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    maxlength="255"
+                    data-digits-only
                     required
                     autocomplete="off"
                 />

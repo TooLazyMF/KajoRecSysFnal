@@ -164,6 +164,7 @@
                                             inputmode="numeric"
                                             maxlength="11"
                                             pattern="[0-9]{11}"
+                                            data-digits-only
                                             label="{{ $field['label'] }}"
                                             value="{{ $fieldValue }}"
                                             :required="$field['key'] === 'contact_number'"
@@ -186,11 +187,11 @@
                                         <flux:input
                                             id="{{ $field['key'] }}"
                                             name="details[{{ $field['key'] }}]"
-                                            type="number"
-                                            min="1"
-                                            max="120"
-                                            step="1"
+                                            type="text"
                                             inputmode="numeric"
+                                            pattern="[0-9]*"
+                                            maxlength="3"
+                                            data-digits-only
                                             label="{{ $field['label'] }}"
                                             value="{{ old('details.'.$field['key'], $existingSubmission?->data[$field['key']] ?? null) }}"
                                         />

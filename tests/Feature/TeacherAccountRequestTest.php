@@ -80,7 +80,7 @@ class TeacherAccountRequestTest extends TestCase
             ->firstOrFail();
         $this->assertSame('teacher', $teacher->role);
         $this->assertSame('A. Teacher', $teacher->name);
-        $this->assertSame('TEACHER-001', $teacher->id_number);
+        $this->assertSame('10001', $teacher->id_number);
         $this->assertTrue($teacher->is_active);
         $this->assertTrue($teacher->hasVerifiedEmail());
         $this->assertTrue(Hash::check('TeacherPassword123', $teacher->password));
@@ -139,6 +139,30 @@ class TeacherAccountRequestTest extends TestCase
         $this->assertTrue(Hash::check('TeacherPassword123', $teacherRequest->password));
     }
 
+    public function test_teacher_request_rejects_non_numeric_teacher_ids(): void
+    {
+        Notification::fake();
+        Storage::fake('local');
+        $this->importTeacher('A. Teacher');
+
+        $this->from(route('teacher.register'))
+            ->post(route('teacher.register.store'), [
+                'teacher_name' => 'A. Teacher',
+                'teacher_id' => 'TEACHER-001',
+                'email' => 'invalid-id@example.com',
+                'id_photo' => $this->fakeIdPhoto(),
+                'password' => 'TeacherPassword123',
+                'password_confirmation' => 'TeacherPassword123',
+            ])
+            ->assertRedirect(route('teacher.register'))
+            ->assertSessionHasErrors('teacher_id');
+
+        $this->assertDatabaseMissing('teacher_account_requests', [
+            'email_lookup_hash' => SensitiveLookup::hash('email', 'invalid-id@example.com'),
+        ]);
+        Notification::assertNothingSent();
+    }
+
     private function importTeacher(string $name): void
     {
         TeacherReference::create([
@@ -152,7 +176,7 @@ class TeacherAccountRequestTest extends TestCase
     {
         $this->post(route('teacher.register.store'), [
             'teacher_name' => 'A. Teacher',
-            'teacher_id' => 'TEACHER-001',
+            'teacher_id' => '10001',
             'email' => 'a.teacher@example.com',
             'id_photo' => $this->fakeIdPhoto(),
             'password' => 'TeacherPassword123',

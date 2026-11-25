@@ -34,7 +34,9 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function validate(array $input): array
     {
-        $input['id_number'] = StudentReference::normalizeIdNumber($input['id_number'] ?? '');
+        $input['id_number'] = is_string($input['id_number'] ?? null)
+            ? trim($input['id_number'])
+            : '';
 
         $validated = Validator::make($input, [
             'first_name' => ['required', 'string', 'max:100'],
@@ -42,7 +44,7 @@ class CreateNewUser implements CreatesNewUsers
             'middle_initial' => ['nullable', 'string', 'max:10'],
             'name_extension' => ['nullable', 'string', 'max:20'],
             'email' => $this->emailRules(),
-            'id_number' => ['required', 'string', 'max:255', new UniqueEncryptedLookup('users', 'id_number')],
+            'id_number' => ['required', 'string', 'max:255', 'regex:/\A[0-9]+\z/D', new UniqueEncryptedLookup('users', 'id_number')],
             'gender' => ['required', Rule::in(['male', 'female'])],
             'password' => $this->passwordRules(),
             'password_confirmation' => ['required', 'same:password'],
@@ -60,7 +62,7 @@ class CreateNewUser implements CreatesNewUsers
     {
         Validator::make($validated, [
             'email' => $this->emailRules(),
-            'id_number' => ['required', 'string', 'max:255', new UniqueEncryptedLookup('users', 'id_number')],
+            'id_number' => ['required', 'string', 'max:255', 'regex:/\A[0-9]+\z/D', new UniqueEncryptedLookup('users', 'id_number')],
         ])->validate();
 
         $this->validateStudentReference($validated);

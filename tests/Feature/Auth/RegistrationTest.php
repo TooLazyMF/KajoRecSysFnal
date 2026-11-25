@@ -115,12 +115,12 @@ class RegistrationTest extends TestCase
     public function test_new_users_can_register(): void
     {
         Notification::fake();
-        $this->createStudentReference('STUDENT-1001', 'John Doe', 'male');
+        $this->createStudentReference('1001', 'John Doe', 'male');
 
         $response = $this->post(route('register.store'), [
             'first_name' => 'John',
             'last_name' => 'Doe',
-            'id_number' => 'STUDENT-1001',
+            'id_number' => '1001',
             'gender' => 'male',
             'email' => 'test@example.com',
             'password' => 'RegistrationPass123',
@@ -141,6 +141,30 @@ class RegistrationTest extends TestCase
             ->assertSee('name="otp"', false)
             ->assertSee('Cancel');
         Notification::assertSentOnDemand(EmailOtp::class);
+    }
+
+    public function test_student_registration_rejects_non_numeric_ids(): void
+    {
+        Notification::fake();
+        $this->createStudentReference('1008', 'Jane Doe', 'female');
+
+        $this->from(route('home'))
+            ->post(route('register.store'), [
+                'first_name' => 'Jane',
+                'last_name' => 'Doe',
+                'id_number' => '10A8',
+                'gender' => 'female',
+                'email' => 'numeric-id@example.com',
+                'password' => 'RegistrationPass123',
+                'password_confirmation' => 'RegistrationPass123',
+            ])
+            ->assertRedirect(route('home'))
+            ->assertSessionHasErrors('id_number');
+
+        $this->assertDatabaseMissing('users', [
+            'email_lookup_hash' => SensitiveLookup::hash('email', 'numeric-id@example.com'),
+        ]);
+        Notification::assertNothingSent();
     }
 
     public function test_production_registration_rejects_a_log_mailer(): void
@@ -170,12 +194,12 @@ class RegistrationTest extends TestCase
     public function test_new_users_are_authenticated_only_after_email_verification(): void
     {
         Notification::fake();
-        $this->createStudentReference('STUDENT-1002', 'Jane Doe', 'female');
+        $this->createStudentReference('1002', 'Jane Doe', 'female');
 
         $this->post(route('register.store'), [
             'first_name' => 'Jane',
             'last_name' => 'Doe',
-            'id_number' => 'STUDENT-1002',
+            'id_number' => '1002',
             'gender' => 'female',
             'email' => 'jane@example.com',
             'password' => 'RegistrationPass123',
@@ -201,12 +225,12 @@ class RegistrationTest extends TestCase
     public function test_invalid_registration_code_keeps_the_verification_modal_open(): void
     {
         Notification::fake();
-        $this->createStudentReference('STUDENT-OTP', 'Verify Later', 'male');
+        $this->createStudentReference('1003', 'Verify Later', 'male');
 
         $this->post(route('register.store'), [
             'first_name' => 'Verify',
             'last_name' => 'Later',
-            'id_number' => 'STUDENT-OTP',
+            'id_number' => '1003',
             'gender' => 'male',
             'email' => 'verify-later@example.com',
             'password' => 'RegistrationPass123',
@@ -230,7 +254,7 @@ class RegistrationTest extends TestCase
     public function test_registration_after_logout_does_not_restore_the_previous_account(): void
     {
         Notification::fake();
-        $this->createStudentReference('STUDENT-1003', 'New Student', 'male');
+        $this->createStudentReference('1004', 'New Student', 'male');
 
         $previousUser = User::factory()->create();
         $this->actingAs($previousUser)->post(route('logout'));
@@ -239,7 +263,7 @@ class RegistrationTest extends TestCase
         $this->post(route('register.store'), [
             'first_name' => 'New',
             'last_name' => 'Student',
-            'id_number' => 'STUDENT-1003',
+            'id_number' => '1004',
             'gender' => 'male',
             'email' => 'new@example.com',
             'password' => 'RegistrationPass123',
@@ -253,12 +277,12 @@ class RegistrationTest extends TestCase
     public function test_canceling_email_verification_deletes_the_pending_registration(): void
     {
         Notification::fake();
-        $this->createStudentReference('STUDENT-CANCEL', 'Cancel Registration', 'female');
+        $this->createStudentReference('1005', 'Cancel Registration', 'female');
 
         $this->post(route('register.store'), [
             'first_name' => 'Cancel',
             'last_name' => 'Registration',
-            'id_number' => 'STUDENT-CANCEL',
+            'id_number' => '1005',
             'gender' => 'female',
             'email' => 'cancel@example.com',
             'password' => 'RegistrationPass123',
@@ -279,7 +303,7 @@ class RegistrationTest extends TestCase
             ->assertDontSee('id="registration-verification-modal"', false);
         $cancelledPage->assertSee('name="first_name" type="text" value="Cancel"', false);
         $cancelledPage->assertSee('value="Registration"', false)
-            ->assertSee('value="STUDENT-CANCEL"', false)
+            ->assertSee('value="1005"', false)
             ->assertSee('value="cancel@example.com"', false);
         $cancelledPage->assertDontSee('value="password"', false);
 
@@ -296,7 +320,7 @@ class RegistrationTest extends TestCase
         $this->from(route('home'))->post(route('register.store'), [
             'first_name' => 'Jane',
             'last_name' => 'Doe',
-            'id_number' => 'STUDENT-1004',
+            'id_number' => '1006',
             'gender' => 'female',
             'email' => 'jane.no-roster@example.com',
             'password' => 'RegistrationPass123',
@@ -315,7 +339,7 @@ class RegistrationTest extends TestCase
     {
         Notification::fake();
         StudentReference::create([
-            'id_number' => 'STUDENT-LEGACY',
+            'id_number' => '1007',
             'name' => 'Jane Doe',
             'gender' => 'female',
         ]);
@@ -327,7 +351,7 @@ class RegistrationTest extends TestCase
         $this->from(route('home'))->post(route('register.store'), [
             'first_name' => 'Jane',
             'last_name' => 'Doe',
-            'id_number' => 'STUDENT-LEGACY',
+            'id_number' => '1007',
             'gender' => 'female',
             'email' => 'legacy@example.com',
             'password' => 'RegistrationPass123',

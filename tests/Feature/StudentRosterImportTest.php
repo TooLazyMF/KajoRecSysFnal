@@ -143,4 +143,20 @@ class StudentRosterImportTest extends TestCase
 
         $this->assertSame(0, StudentReference::query()->count());
     }
+
+    public function test_roster_import_rejects_non_numeric_student_ids(): void
+    {
+        $counselor = User::factory()->create(['role' => 'guidance_counselor']);
+
+        $this->actingAs($counselor)->from(route('guidance.dashboard'))->post(route('admin.students.import'), [
+            'student_file' => UploadedFile::fake()->createWithContent(
+                'roster.csv',
+                "Code,Name,Sex,Course,Year Level\n12A4,Jane Doe,Female,BCAED,1st Year\n",
+            ),
+        ])->assertRedirect(route('guidance.dashboard'))
+            ->assertSessionHasErrors('student_file');
+
+        $this->assertSame(0, StudentReference::query()->count());
+        $this->assertFalse(RosterImportState::isImported(RosterImportState::STUDENTS));
+    }
 }

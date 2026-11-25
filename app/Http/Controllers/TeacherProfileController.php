@@ -41,7 +41,7 @@ class TeacherProfileController extends Controller
 
         $validated = $request->validate([
             'email' => ['required', 'email', 'max:255', new UniqueEncryptedLookup('users', 'email', $user->id)],
-            'id_number' => ['required', 'string', 'max:255', new UniqueEncryptedLookup('users', 'id_number', $user->id)],
+            'id_number' => ['required', 'string', 'max:255', 'regex:/\A[0-9]+\z/D', new UniqueEncryptedLookup('users', 'id_number', $user->id)],
             'password' => $this->passwordRules(),
         ]);
 

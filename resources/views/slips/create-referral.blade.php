@@ -124,12 +124,14 @@
                                 <span class="text-base font-medium text-zinc-700 dark:text-zinc-200">Number of day/s absent/tardy</span>
                                 <input
                                     id="days_absent"
-                                    type="number"
+                                    type="text"
                                     name="details[days_absent]"
                                     value="{{ old('details.days_absent') }}"
                                     required
-                                    min="1"
-                                    max="365"
+                                    inputmode="numeric"
+                                    pattern="[0-9]*"
+                                    maxlength="3"
+                                    data-digits-only
                                     class="w-full rounded-lg border-zinc-300 bg-white px-3 py-3 text-base shadow-sm focus:border-green-700 focus:ring-green-700 dark:border-zinc-700 dark:bg-zinc-800"
                                 >
                             </label>

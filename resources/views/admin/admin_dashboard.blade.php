@@ -404,7 +404,7 @@
                                                         </label>
                                                         <label class="block text-[11px] font-medium text-gray-600 dark:text-zinc-300">
                                                             Revision Number
-                                                            <input name="details[revision_number]" value="{{ $isReferralControlFormOld ? old('details.revision_number') : ($row['document_control_data']['revision_number'] ?? '') }}" maxlength="20" required class="mt-1 w-full rounded-md border-gray-300 px-2 py-1.5 text-xs text-zinc-900 focus:border-green-600 focus:ring-green-600 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100">
+                                                            <input name="details[revision_number]" value="{{ $isReferralControlFormOld ? old('details.revision_number') : ($row['document_control_data']['revision_number'] ?? '') }}" type="text" inputmode="numeric" pattern="[0-9]*" data-digits-only maxlength="20" required class="mt-1 w-full rounded-md border-gray-300 px-2 py-1.5 text-xs text-zinc-900 focus:border-green-600 focus:ring-green-600 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100">
                                                         </label>
                                                         <label class="block text-[11px] font-medium text-gray-600 dark:text-zinc-300">
                                                             Effectivity Date

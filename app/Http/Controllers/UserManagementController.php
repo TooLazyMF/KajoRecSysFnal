@@ -64,6 +64,12 @@ class UserManagementController extends Controller
             $name = $this->studentNameFromRow($values, $headerMap);
             $gender = $this->normalizeGender($values[$headerMap['gender']] ?? '');
 
+            if ($idNumber !== '' && ! ctype_digit($idNumber)) {
+                throw ValidationException::withMessages([
+                    'student_file' => 'Student ID numbers must contain digits only. Invalid ID on data row '.($rowIndex + $headerIndex + 2).'.',
+                ]);
+            }
+
             if ($idNumber === '' || $name === '' || $gender === null) {
                 continue;
             }
@@ -519,7 +525,7 @@ class UserManagementController extends Controller
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'middle_initial' => ['required', 'string', 'max:5', 'regex:/^[A-Za-z](?:\.)?$/'],
-            'teacher_id' => ['required', 'string', 'max:255', new UniqueEncryptedLookup('users', 'id_number', $user->id)],
+            'teacher_id' => ['required', 'string', 'max:255', 'regex:/\A[0-9]+\z/D', new UniqueEncryptedLookup('users', 'id_number', $user->id)],
             'email' => ['required', 'email', 'max:255', new UniqueEncryptedLookup('users', 'email', $user->id)],
             'counselor_password' => ['required', 'string'],
         ]);

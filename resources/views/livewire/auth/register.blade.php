@@ -33,10 +33,15 @@
                 :label="__('Student ID')"
                 :value="old('id_number')"
                 type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                maxlength="255"
+                data-digits-only
                 required
                 autocomplete="off"
                 :placeholder="__('Enter your ID number')"
             />
+            <p class="-mt-4 text-xs text-zinc-500 dark:text-zinc-400">Digits only.</p>
             <flux:select name="gender" label="Gender" required>
                 <flux:select.option value="">Select gender</flux:select.option>
                 <flux:select.option value="male" :selected="old('gender') === 'male'">Male</flux:select.option>

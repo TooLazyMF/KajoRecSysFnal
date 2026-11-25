@@ -43,7 +43,8 @@
 
             <label class="flex flex-col gap-2 text-sm font-medium">
                 Teacher ID
-                <input name="teacher_id" type="text" value="{{ old('teacher_id') }}" required maxlength="255" autocomplete="off" class="rounded-lg border-neutral-300 bg-white px-3 py-2.5 dark:border-neutral-600 dark:bg-neutral-800">
+                <input name="teacher_id" type="text" value="{{ old('teacher_id') }}" required maxlength="255" inputmode="numeric" pattern="[0-9]*" data-digits-only autocomplete="off" class="rounded-lg border-neutral-300 bg-white px-3 py-2.5 dark:border-neutral-600 dark:bg-neutral-800">
+                <span class="text-xs font-normal text-neutral-500">Digits only.</span>
                 @error('teacher_id')<span class="text-sm text-red-600">{{ $message }}</span>@enderror
             </label>
 

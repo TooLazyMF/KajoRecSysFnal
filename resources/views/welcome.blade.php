@@ -1045,7 +1045,7 @@
                         <div class="form-fields">
                             <label class="field" for="forgot-password-otp">
                                 6-digit code
-                                <input id="forgot-password-otp" name="otp" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required>
+                                <input id="forgot-password-otp" name="otp" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" data-digits-only autocomplete="one-time-code" required>
                             </label>
                             <div class="field">
                                 <label for="forgot-password-new">New password</label>
@@ -1141,6 +1141,10 @@
                                 type="text"
                                 value="{{ old('id_number') }}"
                                 placeholder="Enter your ID number"
+                                inputmode="numeric"
+                                pattern="[0-9]*"
+                                maxlength="255"
+                                data-digits-only
                                 autocomplete="off"
                                 required
                             >
@@ -1380,6 +1384,7 @@
                         inputmode="numeric"
                         pattern="[0-9]{6}"
                         maxlength="6"
+                        data-digits-only
                         autocomplete="one-time-code"
                         required
                     >
