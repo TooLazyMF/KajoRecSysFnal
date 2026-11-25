@@ -15,7 +15,7 @@ return new class extends Migration
         });
 
         if (DB::connection()->getDriverName() === 'pgsql') {
-            DB::statement('ALTER TABLE users ALTER COLUMN gender DROP NOT NULL');
+            DB::statement('ALTER TABLE "users" ALTER COLUMN "gender" DROP NOT NULL');
         } else {
             Schema::table('users', function (Blueprint $table): void {
                 $table->enum('gender', ['male', 'female'])->nullable()->change();
@@ -31,7 +31,7 @@ return new class extends Migration
         });
 
         if (DB::connection()->getDriverName() === 'pgsql') {
-            DB::statement('ALTER TABLE users ALTER COLUMN gender SET NOT NULL');
+            DB::statement('ALTER TABLE "users" ALTER COLUMN "gender" SET NOT NULL');
         } else {
             Schema::table('users', function (Blueprint $table): void {
                 $table->enum('gender', ['male', 'female'])->nullable(false)->change();
