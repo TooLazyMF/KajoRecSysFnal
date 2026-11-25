@@ -144,6 +144,14 @@ select:focus[data-flux-control] {
         overflow-x: clip;
     }
 
+    body {
+        color: var(--color-zinc-900);
+    }
+
+    .dark body {
+        color: var(--color-zinc-100);
+    }
+
     :where(main, section, article, form, header, footer, [class*="flex"], [class*="grid"]) {
         min-width: 0;
     }
@@ -195,31 +203,6 @@ select:focus[data-flux-control] {
         max-height: calc(100dvh - 1rem);
         overflow-y: auto;
     }
-}
-
-:root {
-    --kajorec-text-color: #000;
-}
-
-.dark {
-    --kajorec-text-color: #fff;
-}
-
-@media (prefers-color-scheme: dark) {
-    :root:not(.light) {
-        --kajorec-text-color: #fff;
-    }
-}
-
-body,
-body *,
-body *::before,
-body *::after,
-body *::placeholder,
-body *::file-selector-button,
-body *::marker,
-::selection {
-    color: var(--kajorec-text-color) !important;
 }
 
 /* \[:where(&)\]:size-4 {
