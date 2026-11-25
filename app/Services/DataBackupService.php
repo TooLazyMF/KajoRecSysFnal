@@ -103,6 +103,7 @@ class DataBackupService
                     throw new RuntimeException("Unable to read a referenced KajoRec file: {$path}");
                 }
 
+                // Content-addressed entries deduplicate identical files while the manifest preserves each database path.
                 $fileManifest[$path] = $hash;
                 $entry = "files/{$hash}";
 
@@ -173,6 +174,7 @@ class DataBackupService
             $filePathMap = $this->restoreFiles($zip, $payload, $createdFiles);
 
             try {
+                // Database changes are atomic; files restored before the transaction are removed if merging fails.
                 $result = DB::transaction(function () use ($payload, $filePathMap): array {
                     return $this->mergeTables($payload, $filePathMap);
                 });
@@ -258,6 +260,7 @@ class DataBackupService
             throw new InvalidDataBackupException('The backup does not contain the expected KajoRec database tables.');
         }
 
+        // Validate the archive against the live schema and an explicit file allowlist before trusting any imported rows.
         foreach (self::TABLES as $table) {
             if (! Schema::hasTable($table)
                 || ! is_array($payload['schema'][$table])
@@ -449,6 +452,7 @@ class DataBackupService
 
             $contents = $zip->getFromName($entry);
 
+            // Verify content before reusing or writing it; archive paths are derived from these hashes, not user paths.
             if ($contents === false || ! hash_equals($hash, hash('sha256', $contents))) {
                 throw new InvalidDataBackupException('A file in the backup failed its integrity check.');
             }
@@ -547,6 +551,7 @@ class DataBackupService
 
         $pendingAssignments = $payload['tables']['slip_assignments'];
 
+        // Referrals can point to other assignments, so insert parents before dependents and reject cycles/orphans.
         while ($pendingAssignments !== []) {
             $ready = [];
             $pending = [];
@@ -688,6 +693,7 @@ class DataBackupService
                 ->value('id');
 
         if ($byEmail !== null && $byIdNumber !== null && (int) $byEmail !== (int) $byIdNumber) {
+            // Never silently combine two existing accounts when the backup's identifiers disagree.
             throw new InvalidDataBackupException('An imported account email and ID number match different existing accounts.');
         }
 

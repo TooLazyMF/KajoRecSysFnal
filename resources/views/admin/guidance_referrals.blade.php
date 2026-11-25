@@ -225,6 +225,7 @@
                         const reservedStart = minutesFromTime(reservation.time);
                         const reservedEnd = reservedStart + reservation.duration;
 
+                        // Half-open intervals detect overlap while allowing back-to-back appointments.
                         return start < reservedEnd && end > reservedStart;
                     });
 

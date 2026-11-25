@@ -95,6 +95,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('notifications.read');
 
     Route::get('dashboard', function () {
+        // Students enter their dedicated dashboard; other roles use the shared role view.
         if (auth()->user()->role === 'student') {
             return redirect()->route('student.dashboard');
         }

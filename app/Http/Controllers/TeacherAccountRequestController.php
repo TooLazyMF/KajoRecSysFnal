@@ -262,6 +262,7 @@ class TeacherAccountRequestController extends Controller
                 ->lockForUpdate()
                 ->findOrFail($teacherAccountRequest->getKey());
 
+            // Lock and recheck inside the transaction so concurrent reviews cannot both process this request.
             if ($lockedRequest->status !== TeacherAccountRequest::PENDING) {
                 throw ValidationException::withMessages(['request' => 'This request has already been reviewed.']);
             }
@@ -324,6 +325,7 @@ class TeacherAccountRequestController extends Controller
                 ->lockForUpdate()
                 ->findOrFail($teacherAccountRequest->getKey());
 
+            // The same locked state check protects the decline transition from racing with approval.
             if ($lockedRequest->status !== TeacherAccountRequest::PENDING) {
                 throw ValidationException::withMessages(['request' => 'This request has already been reviewed.']);
             }

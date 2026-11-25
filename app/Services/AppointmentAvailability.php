@@ -29,6 +29,7 @@ class AppointmentAvailability
 
     public function lockSchedule(): void
     {
+        // Serialize booking transactions on a shared row so concurrent requests cannot both claim the same slot.
         User::query()
             ->where('role', 'guidance_counselor')
             ->orderBy('id')

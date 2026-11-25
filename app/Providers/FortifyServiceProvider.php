@@ -8,12 +8,14 @@ use App\Http\Responses\LoginResponse;
 use App\Models\User;
 use App\Support\SensitiveLookup;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Illuminate\Support\ViewErrorBag;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
 use Laravel\Fortify\Fortify;
 
@@ -57,6 +59,7 @@ class FortifyServiceProvider extends ServiceProvider
                     ->first()
                 : null;
 
+            // Teacher and counselor accounts may also sign in by their imported account name.
             if (! $user instanceof User && filled($request->input(Fortify::username()))) {
                 $teacherMatches = User::query()
                     ->where('role', 'teacher')
@@ -99,13 +102,27 @@ class FortifyServiceProvider extends ServiceProvider
      */
     private function configureViews(): void
     {
-        Fortify::loginView(fn () => view('pages::auth.login'));
+        Fortify::loginView(fn (Request $request) => $this->redirectToLandingPanel($request, 'login'));
         Fortify::verifyEmailView(fn () => view('pages::auth.verify-email'));
         Fortify::twoFactorChallengeView(fn () => view('pages::auth.two-factor-challenge'));
         Fortify::confirmPasswordView(fn () => view('pages::auth.confirm-password'));
-        Fortify::registerView(fn () => view('pages::auth.register'));
+        Fortify::registerView(fn (Request $request) => $this->redirectToLandingPanel($request, 'register'));
         Fortify::resetPasswordView(fn () => view('pages::auth.reset-password'));
         Fortify::requestPasswordResetLinkView(fn () => view('pages::auth.forgot-password'));
+    }
+
+    private function redirectToLandingPanel(Request $request, string $panel): RedirectResponse
+    {
+        // The landing page replaces Fortify's standalone forms, so preserve their flashed form state.
+        $errors = $request->session()->get('errors', []);
+
+        if ($errors instanceof ViewErrorBag) {
+            $errors = $errors->getBag('default');
+        }
+
+        return redirect()->route('home', ['panel' => $panel])
+            ->withErrors($errors)
+            ->withInput($request->session()->get('_old_input', []));
     }
 
     /**

@@ -5,6 +5,7 @@
     (() => {
         let hasUnsavedChanges = false;
 
+        // Pausing reloads protects user input and open dialogs from being discarded.
         document.addEventListener('input', (event) => {
             if (event.target.closest('form')) {
                 hasUnsavedChanges = true;

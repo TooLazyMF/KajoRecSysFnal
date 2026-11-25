@@ -31,7 +31,11 @@ class RegistrationTest extends TestCase
     {
         $response = $this->get(route('register'));
 
-        $response->assertOk()
+        $response->assertRedirect(route('home', ['panel' => 'register']));
+
+        $this->get(route('home', ['panel' => 'register']))
+            ->assertOk()
+            ->assertSee('data-mode="register"', false)
             ->assertSee('Student ID')
             ->assertSee('Gender')
             ->assertSee('Use an email address you can access. We will send a verification code; verify it to use your account.')
@@ -46,6 +50,8 @@ class RegistrationTest extends TestCase
             ->assertSee(route('login.root'), false)
             ->assertSee(route('register.store'), false)
             ->assertSee('data-auth-view="login"', false)
+            ->assertSee('Sign in with a passkey')
+            ->assertSee('name="share_location"', false)
             ->assertSee('data-contact-content', false)
             ->assertSee('data-about-content', false)
             ->assertSee('data-welcome-content', false)
@@ -345,7 +351,11 @@ class RegistrationTest extends TestCase
         ]);
 
         $this->get(route('register'))
+            ->assertRedirect(route('home', ['panel' => 'register']));
+
+        $this->get(route('home', ['panel' => 'register']))
             ->assertOk()
+            ->assertSee('data-mode="register"', false)
             ->assertSee('The guidance counselor has not imported the student list yet.');
 
         $this->from(route('home'))->post(route('register.store'), [

@@ -349,6 +349,7 @@
             const collegeInput = document.getElementById('college');
             const collegeValueInput = document.getElementById('college_value');
             const contactNumberInputs = document.querySelectorAll('[data-cif-contact]');
+            // Keep display-only and submitted college values synchronized from the course mapping.
             const syncCollegeFromCourse = () => {
                 if (!courseInput || !collegeInput || !collegeValueInput) return;
                 const college = courseCollegeMap[courseInput.value] || '';

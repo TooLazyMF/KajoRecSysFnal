@@ -338,6 +338,7 @@
                 let logoutTimer;
 
                 const syncActivity = () => {
+                    // Throttle server activity updates separately from the browser idle timer.
                     if (!csrfToken || Date.now() - lastSync < 60000) {
                         return;
                     }

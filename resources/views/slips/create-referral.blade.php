@@ -295,6 +295,7 @@
             const renderAbsenceDates = () => {
                 const count = Math.min(Math.max(Number.parseInt(daysAbsentInput.value || '0', 10), 0), 365);
                 const currentDates = Array.from(absenceDates.querySelectorAll('input[type="date"]')).map((input) => input.value);
+                // Prefer the current DOM values, falling back to old input after validation redirects.
                 const dates = currentDates.length ? currentDates : oldAbsenceDates;
                 const currentReasons = Array.from(document.querySelectorAll('#absence_reasons select')).map((input) => input.value);
                 const currentOtherReasons = Array.from(document.querySelectorAll('#absence_reasons input[data-other-reason]')).map((input) => input.value);

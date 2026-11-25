@@ -27,6 +27,8 @@ class PendingRegistrationService
         unset($registration['password_confirmation']);
         $registration['password'] = Hash::make($registration['password']);
 
+        // Keep the full, hashed registration in cache behind a session-only random token;
+        // the session copy is limited to safe fields needed to repopulate the form.
         Cache::put($this->cacheKey($token), $registration, now()->addMinutes(EmailOtpService::EXPIRATION_MINUTES));
         $request->session()->regenerate();
         $request->session()->put(self::SESSION_KEY, $token);

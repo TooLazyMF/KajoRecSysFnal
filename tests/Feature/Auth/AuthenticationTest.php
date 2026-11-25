@@ -15,8 +15,16 @@ class AuthenticationTest extends TestCase
     {
         $response = $this->get(route('login'));
 
-        $response->assertOk()
+        $response->assertRedirect(route('home', ['panel' => 'login']));
+
+        $this->get(route('home', ['panel' => 'login']))
+            ->assertOk()
+            ->assertSee('data-mode="login"', false)
             ->assertSee('Email address or account name')
+            ->assertSee('Sign in with a passkey')
+            ->assertSee('name="share_location"', false)
+            ->assertSee('name="login_latitude"', false)
+            ->assertSee('name="login_longitude"', false)
             ->assertSee('data-loading-spinner', false)
             ->assertSee('About Us')
             ->assertSee('What is KajoRec?')
@@ -30,7 +38,8 @@ class AuthenticationTest extends TestCase
             ->assertSee('Contact Us')
             ->assertSee('We are the researchers behind KajoRec.')
             ->assertSee('mailto:kajorec@gmail.com')
-            ->assertSee('Support hours: 8:00 AM–3:00 PM.');
+            ->assertSee('Support hours')
+            ->assertSee('8:00 AM–3:00 PM');
     }
 
     public function test_users_can_authenticate_using_the_login_screen(): void
@@ -59,6 +68,15 @@ class AuthenticationTest extends TestCase
         ]);
 
         $response->assertSessionHasErrorsIn('email');
+
+        $this->get(route('login'))
+            ->assertRedirect(route('home', ['panel' => 'login']))
+            ->assertSessionHasErrorsIn('email');
+
+        $this->get(route('home', ['panel' => 'login']))
+            ->assertOk()
+            ->assertSee('data-mode="login"', false)
+            ->assertSee($user->email);
 
         $this->assertGuest();
     }

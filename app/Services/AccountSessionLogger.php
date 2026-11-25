@@ -53,6 +53,7 @@ class AccountSessionLogger
 
         $now = CarbonImmutable::now();
         $lastDatabaseTouch = $request->session()->get(self::LAST_DATABASE_TOUCH_SESSION_KEY, 0);
+        // Track request-level idle time in the session, while limiting durable activity writes to once per minute.
         if ($now->timestamp - (int) $lastDatabaseTouch < 60) {
             return;
         }

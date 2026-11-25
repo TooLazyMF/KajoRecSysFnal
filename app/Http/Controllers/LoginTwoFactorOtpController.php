@@ -49,6 +49,7 @@ class LoginTwoFactorOtpController extends Controller
                 ->with('email_otp_sent', true);
         }
 
+        // The password challenge is not a full login; establish authentication only after OTP verification.
         $guard->login($user, $request->session()->pull('login.remember', false));
         $request->session()->forget('login.id');
         $request->session()->regenerate();

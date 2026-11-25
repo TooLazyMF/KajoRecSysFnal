@@ -20,6 +20,8 @@ class SensitiveLookup
             default => throw new \InvalidArgumentException("Unsupported sensitive lookup field: {$field}"),
         };
 
+        // A keyed digest keeps equality lookups possible without exposing searchable plaintext
+        // or relying on deterministic ciphertext, which would weaken the encrypted column.
         return hash_hmac('sha256', $field."\0".$normalized, (string) config('app.key'));
     }
 }

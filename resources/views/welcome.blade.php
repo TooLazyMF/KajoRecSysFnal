@@ -131,6 +131,18 @@
             color: var(--primary-ink);
         }
 
+        body.welcome-shell > header button[data-show-panel="login"] {
+            border-color: #ffffff;
+            background-color: #ffffff;
+            color: #176b3a !important;
+        }
+
+        body.welcome-shell > header button[data-show-panel="login"]:hover {
+            border-color: #f0f7f1;
+            background-color: #f0f7f1;
+            color: #12552e !important;
+        }
+
         .auth-area {
             display: grid;
             flex: 1;
@@ -411,6 +423,21 @@
         }
 
         .remember input {
+            accent-color: var(--primary);
+        }
+
+        .location-share {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .location-share input {
+            flex: 0 0 auto;
+            margin-top: 3px;
             accent-color: var(--primary);
         }
 
@@ -939,7 +966,7 @@
         <main
             class="page"
             data-auth-page
-            data-mode="{{ old('_welcome_panel') === 'forgot' || session()->has('password_reset_email') ? 'forgot' : (old('_welcome_panel') === 'register' || session('registration_panel') || session('registration_cancelled') || session()->has(\App\Services\PendingRegistrationService::SESSION_KEY) ? 'register' : (old('_welcome_panel') === 'login' || $errors->any() || session('status') ? 'login' : 'welcome')) }}"
+            data-mode="{{ old('_welcome_panel') === 'forgot' || request()->query('panel') === 'forgot' || session()->has('password_reset_email') ? 'forgot' : (old('_welcome_panel') === 'register' || request()->query('panel') === 'register' || session('registration_panel') || session('registration_cancelled') || session()->has(\App\Services\PendingRegistrationService::SESSION_KEY) ? 'register' : (old('_welcome_panel') === 'login' || request()->query('panel') === 'login' || $errors->any() || session('status') ? 'login' : 'welcome')) }}"
         >
             <section class="form-panel" aria-labelledby="form-heading">
             <div class="brand" aria-label="KAJOREC Guidance Office">
@@ -947,7 +974,7 @@
                 KAJOREC
             </div>
 
-            <div data-auth-view="login" @if (old('_welcome_panel') === 'register') hidden inert @endif>
+            <div data-auth-view="login" @if (old('_welcome_panel') === 'register' || old('_welcome_panel') === 'forgot' || request()->query('panel') === 'register' || request()->query('panel') === 'forgot') hidden inert @endif>
                 <h1 class="form-heading" id="form-heading" tabindex="-1">Welcome to KAJOREC</h1>
                 <p class="form-intro">Enter your details to sign in to your KAJOREC account.</p>
 
@@ -955,9 +982,13 @@
                     <p class="session-status" role="status">{{ session('status') }}</p>
                 @endif
 
-                <form method="POST" action="{{ route('login.root') }}" class="auth-form">
+                <x-passkey-verify />
+
+                <form id="landing-login-form" method="POST" action="{{ route('login.root') }}" class="auth-form">
                     @csrf
                     <input type="hidden" name="_welcome_panel" value="login">
+                    <input type="hidden" name="login_latitude" id="login-latitude">
+                    <input type="hidden" name="login_longitude" id="login-longitude">
 
                     <div class="form-fields">
                         <label class="field" for="login-email">
@@ -1012,6 +1043,11 @@
                             @endif
                         </div>
 
+                        <label class="location-share">
+                            <input id="share-login-location" name="share_location" type="checkbox" value="1" @checked(old('share_location'))>
+                            <span>Share this device’s location in my account logs. Your browser will ask permission; coordinates stay in this system and are never sent to a location provider.</span>
+                        </label>
+
                         <button class="submit-button" type="submit" data-loading-button data-loading-label="Signing in...">
                             <span data-button-label>Sign in</span>
                             <span class="loading-spinner" data-loading-spinner aria-hidden="true" hidden></span>
@@ -1026,7 +1062,7 @@
                 </p>
             </div>
 
-            <div data-auth-view="forgot" @if (old('_welcome_panel') !== 'forgot' && ! session()->has('password_reset_email')) hidden inert @endif>
+            <div data-auth-view="forgot" @if (old('_welcome_panel') !== 'forgot' && request()->query('panel') !== 'forgot' && ! session()->has('password_reset_email')) hidden inert @endif>
                 <h1 class="form-heading" tabindex="-1">Forgot password?</h1>
                 <p class="form-intro">Recover your KAJOREC account using a one-time code sent to your registered email.</p>
 
@@ -1092,7 +1128,7 @@
                 </p>
             </div>
 
-            <div data-auth-view="register" @if (old('_welcome_panel') !== 'register') hidden inert @endif>
+            <div data-auth-view="register" @if (old('_welcome_panel') !== 'register' && request()->query('panel') !== 'register') hidden inert @endif>
                 <h1 class="form-heading" tabindex="-1">Create your account</h1>
                 <p class="form-intro">A few details and you’ll be ready to get started.</p>
                 <p class="form-intro">Use an email address you can access. We will send a verification code; verify it to use your account.</p>
@@ -1511,8 +1547,48 @@
             showFormLoading(event.currentTarget);
         });
 
-        authPage.querySelector('[data-auth-view="login"] form').addEventListener('submit', (event) => {
-            showFormLoading(event.currentTarget);
+        const loginForm = authPage.querySelector('#landing-login-form');
+        const shareLocation = loginForm.querySelector('#share-login-location');
+        let locationSubmissionStarted = false;
+        let loginSubmitted = false;
+
+        loginForm.addEventListener('submit', (event) => {
+            showFormLoading(loginForm);
+
+            if (!shareLocation.checked || locationSubmissionStarted) {
+                return;
+            }
+
+            event.preventDefault();
+            locationSubmissionStarted = true;
+
+            const submitLogin = () => {
+                // Permission callbacks and the timeout can race; submit credentials only once.
+                if (loginSubmitted) {
+                    return;
+                }
+
+                loginSubmitted = true;
+                HTMLFormElement.prototype.submit.call(loginForm);
+            };
+            const submitWithLocation = (position) => {
+                document.getElementById('login-latitude').value = position.coords.latitude;
+                document.getElementById('login-longitude').value = position.coords.longitude;
+                submitLogin();
+            };
+
+            // Location is optional; denied or unavailable access must not block sign-in.
+            if (!navigator.geolocation) {
+                submitLogin();
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(submitWithLocation, submitLogin, {
+                enableHighAccuracy: false,
+                maximumAge: 60000,
+                timeout: 5000,
+            });
+            window.setTimeout(submitLogin, 5500);
         });
 
         function showFormLoading(form) {

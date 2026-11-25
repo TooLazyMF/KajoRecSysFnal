@@ -18,6 +18,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('settings/appearance', 'pages::settings.appearance')->name('appearance.edit');
 
     Route::post('settings/security/confirmation', function (Request $request) {
+        // Re-entering password confirmation should return users to the security page afterward.
         $request->session()->put('url.intended', route('security.edit'));
 
         return response()->noContent();

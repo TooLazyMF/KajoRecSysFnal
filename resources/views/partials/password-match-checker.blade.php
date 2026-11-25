@@ -19,6 +19,7 @@
 
         const passwordFields = (form) => Array.from(form.querySelectorAll('input[type="password"]'));
         const fieldName = (input) => input.name || input.getAttribute('wire:model') || input.id || '';
+        // Confirmation fields use either their name or Livewire binding, not a fixed field ID.
         const isConfirmation = (input) => /confirm/i.test(fieldName(input));
         const fieldContainer = (input) => input.closest('[data-flux-field], .field, label') || input.parentElement;
 

@@ -28,6 +28,7 @@ class EncryptedDatabaseSessionHandler extends DatabaseSessionHandler
         try {
             return Crypt::decryptString($data);
         } catch (DecryptException) {
+            // Keep existing sessions readable across rollout from the former plaintext format.
             return $data;
         }
     }
@@ -71,6 +72,7 @@ class EncryptedDatabaseSessionHandler extends DatabaseSessionHandler
 
     private function storageKey(string $sessionId): string
     {
+        // Database rows need a stable key, but storing the browser's session ID would expose a bearer credential.
         return SensitiveLookup::hash('session_id', $sessionId)
             ?? throw new \LogicException('A session ID hash could not be generated.');
     }

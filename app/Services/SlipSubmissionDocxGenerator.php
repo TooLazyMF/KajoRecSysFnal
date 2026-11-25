@@ -314,6 +314,7 @@ class SlipSubmissionDocxGenerator
         int $length,
         string $replacement
     ): void {
+        // Word may split one visible placeholder across several runs; map its flattened text range back to those nodes.
         $nodes = $xpath->query('.//w:t', $paragraph);
         $segments = [];
         $position = 0;

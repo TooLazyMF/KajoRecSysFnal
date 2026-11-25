@@ -54,6 +54,7 @@ class PasswordResetOtpController extends Controller
 
         $request->session()->put('password_reset_email', $email);
 
+        // Keep the response identical whether an eligible account exists to avoid leaking account membership.
         return back()->with('status', 'If an active account uses that email, a password reset code has been sent.');
     }
 
@@ -93,6 +94,7 @@ class PasswordResetOtpController extends Controller
 
         $user->forceFill([
             'password' => $validated['password'],
+            // Rotating this invalidates persistent "remember me" cookies issued with the previous token.
             'remember_token' => Str::random(60),
         ])->save();
 

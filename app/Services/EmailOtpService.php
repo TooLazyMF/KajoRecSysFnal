@@ -28,6 +28,7 @@ class EmailOtpService
         $key = $this->cacheKey($user, $purpose);
         $otp = Cache::get($key);
 
+        // Only the hash is cached; a successful comparison consumes it so the code cannot be replayed.
         if (! is_array($otp)
             || ! isset($otp['code_hash'])
             || ! is_string($otp['code_hash'])
