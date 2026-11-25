@@ -59,8 +59,6 @@
                 autocomplete="email"
                 placeholder="email@example.com"
             />
-            <flux:input name="verification_photo" :label="__('Faculty verification photo (teachers only)')" type="file" accept="image/jpeg,image/png,image/webp" capture="user" />
-
             <!-- Password -->
             <flux:input
                 name="password"
@@ -93,6 +91,7 @@
 
             <!-- Create Account -->
             <div class="flex items-center justify-end">
+                <input type="hidden" name="teacher_request_confirmation" value="0" data-teacher-request-confirmation>
 
                 <flux:button
                     type="submit"
@@ -104,6 +103,43 @@
                 </flux:button>
 
             </div>
+
+            <dialog
+                class="w-[min(92vw,32rem)] rounded-2xl border border-zinc-200 bg-white p-0 text-zinc-900 shadow-2xl backdrop:bg-zinc-950/60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                @if (session('show_teacher_verification_modal')) open @endif
+                data-teacher-verification-modal
+            >
+                <div class="space-y-5 p-6">
+                    <div class="space-y-2">
+                        <h2 class="text-xl font-semibold">Faculty verification required</h2>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-300">
+                            We could not match these credentials with the imported student list. If you are a faculty member, upload an ID photo or take a selfie so the guidance counselor can review your request.
+                        </p>
+                    </div>
+
+                    <flux:input
+                        name="verification_photo"
+                        :label="__('Faculty verification photo')"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        capture="user"
+                    />
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400">JPG, PNG, or WebP up to 5 MB. The image is used only for counselor review.</p>
+
+                    @error('verification_photo')
+                        <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+
+                    <div class="flex justify-end gap-3">
+                        <button type="button" class="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800" data-close-teacher-modal>
+                            Cancel
+                        </button>
+                        <button type="submit" class="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800" data-confirm-teacher-request>
+                            Submit for review
+                        </button>
+                    </div>
+                </div>
+            </dialog>
 
         </form>
 
@@ -131,3 +167,21 @@
     </div>
 
 </x-layouts::auth>
+
+<script>
+    (() => {
+        const modal = document.querySelector('[data-teacher-verification-modal]');
+        const confirmation = document.querySelector('[data-teacher-request-confirmation]');
+
+        if (!modal || !confirmation) return;
+
+        document.querySelector('[data-close-teacher-modal]')?.addEventListener('click', () => {
+            modal.close();
+            confirmation.value = '0';
+        });
+
+        document.querySelector('[data-confirm-teacher-request]')?.addEventListener('click', () => {
+            confirmation.value = '1';
+        });
+    })();
+</script>

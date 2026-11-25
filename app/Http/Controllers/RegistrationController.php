@@ -8,6 +8,7 @@ use App\Services\PendingRegistrationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class RegistrationController extends Controller
@@ -21,9 +22,22 @@ class RegistrationController extends Controller
         $validated = $createNewUser->validateRegistration($request->all());
 
         if (! $createNewUser->matchesStudentReference($validated)) {
-            $request->validate([
+            if (! $request->boolean('teacher_request_confirmation')) {
+                return back()
+                    ->withInput()
+                    ->with('show_teacher_verification_modal', true);
+            }
+
+            $photoValidation = Validator::make($request->all(), [
                 'verification_photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             ]);
+
+            if ($photoValidation->fails()) {
+                return back()
+                    ->withInput()
+                    ->with('show_teacher_verification_modal', true)
+                    ->withErrors($photoValidation);
+            }
 
             $teacherAccountRequests->createFromRegistration($validated, $request->file('verification_photo'));
 
