@@ -19,7 +19,7 @@ class DataBackupService
 {
     private const FORMAT = 'kajorec-database-backup';
 
-    private const VERSION = 4;
+    private const VERSION = 5;
 
     private const DATA_FILE = 'database.json';
 
@@ -33,6 +33,7 @@ class DataBackupService
         'account_session_logs',
         'passkeys',
         'teacher_references',
+        'teacher_account_requests',
         'roster_import_states',
     ];
 
@@ -231,7 +232,7 @@ class DataBackupService
 
         if (! is_array($payload)
             || ($payload['format'] ?? null) !== self::FORMAT
-            || ! in_array($payload['version'] ?? null, [1, 2, 3, self::VERSION], true)
+            || ! in_array($payload['version'] ?? null, [1, 2, 3, 4, self::VERSION], true)
             || ! isset($payload['backup_id'])
             || ! Str::isUuid($payload['backup_id'])
             || ! isset($payload['schema'], $payload['tables'], $payload['files'], $payload['missing_files'])
@@ -248,6 +249,8 @@ class DataBackupService
             $payload = $this->normalizeVersionTwoPayload($payload);
         } elseif ($payload['version'] === 3) {
             $payload = $this->normalizeVersionThreePayload($payload);
+        } elseif ($payload['version'] === 4) {
+            $payload = $this->normalizeVersionFourPayload($payload);
         }
 
         if (array_keys($payload['tables']) !== self::TABLES
@@ -373,6 +376,8 @@ class DataBackupService
 
         $tables['teacher_references'] = [];
         $schema['teacher_references'] = Schema::getColumnListing('teacher_references');
+        $tables['teacher_account_requests'] = [];
+        $schema['teacher_account_requests'] = Schema::getColumnListing('teacher_account_requests');
         $tables['roster_import_states'] = [];
         $schema['roster_import_states'] = Schema::getColumnListing('roster_import_states');
 
@@ -387,6 +392,8 @@ class DataBackupService
     {
         $payload['tables']['teacher_references'] ??= [];
         $payload['schema']['teacher_references'] ??= Schema::getColumnListing('teacher_references');
+        $payload['tables']['teacher_account_requests'] = [];
+        $payload['schema']['teacher_account_requests'] = Schema::getColumnListing('teacher_account_requests');
         $payload['tables']['roster_import_states'] = [];
         $payload['schema']['roster_import_states'] = Schema::getColumnListing('roster_import_states');
         $payload['version'] = self::VERSION;
@@ -396,8 +403,29 @@ class DataBackupService
 
     private function normalizeVersionThreePayload(array $payload): array
     {
+        $payload['tables']['teacher_account_requests'] = [];
+        $payload['schema']['teacher_account_requests'] = Schema::getColumnListing('teacher_account_requests');
         $payload['tables']['roster_import_states'] = [];
         $payload['schema']['roster_import_states'] = Schema::getColumnListing('roster_import_states');
+        $payload['version'] = self::VERSION;
+
+        return $payload;
+    }
+
+    private function normalizeVersionFourPayload(array $payload): array
+    {
+        $payload['tables']['teacher_account_requests'] = [];
+        $payload['schema']['teacher_account_requests'] = Schema::getColumnListing('teacher_account_requests');
+        $tables = [];
+        $schema = [];
+
+        foreach (self::TABLES as $table) {
+            $tables[$table] = $payload['tables'][$table];
+            $schema[$table] = $payload['schema'][$table];
+        }
+
+        $payload['tables'] = $tables;
+        $payload['schema'] = $schema;
         $payload['version'] = self::VERSION;
 
         return $payload;
@@ -561,6 +589,13 @@ class DataBackupService
 
         $this->mergeTable($backupId, 'teacher_references', $payload['tables']['teacher_references'], [], $idMaps, $filePathMap, $added, [
             ['name_lookup_hash'],
+        ]);
+
+        $this->mergeTable($backupId, 'teacher_account_requests', $payload['tables']['teacher_account_requests'], [
+            'reviewed_by' => 'users',
+            'user_id' => 'users',
+        ], $idMaps, $filePathMap, $added, [
+            ['email_lookup_hash'],
         ]);
 
         $this->mergeTable($backupId, 'roster_import_states', $payload['tables']['roster_import_states'], [], $idMaps, $filePathMap, $added, [
@@ -768,6 +803,12 @@ class DataBackupService
             $row['pdf_path'] = $filePathMap[$row['pdf_path']] ?? $row['pdf_path'];
         }
 
+        if ($table === 'teacher_account_requests'
+            && isset($row['id_photo_path'])
+            && is_string($row['id_photo_path'])) {
+            $row['id_photo_path'] = $filePathMap[$row['id_photo_path']] ?? $row['id_photo_path'];
+        }
+
         $jsonColumns = match ($table) {
             'appointments' => ['attachments'],
             'slip_submissions' => ['data'],
@@ -863,6 +904,12 @@ class DataBackupService
     private function referencedFilePaths(array $tables): array
     {
         $paths = [];
+
+        foreach ($tables['teacher_account_requests'] ?? [] as $row) {
+            if (isset($row['id_photo_path']) && is_string($row['id_photo_path']) && $row['id_photo_path'] !== '') {
+                $paths[] = $row['id_photo_path'];
+            }
+        }
 
         foreach (['slip_informations', 'slip_submissions'] as $table) {
             foreach ($tables[$table] ?? [] as $row) {

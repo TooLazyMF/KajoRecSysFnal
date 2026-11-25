@@ -3,22 +3,27 @@
 namespace Tests\Feature;
 
 use App\Models\RosterImportState;
+use App\Models\TeacherAccountRequest;
 use App\Models\TeacherReference;
 use App\Models\User;
+use App\Notifications\TeacherAccountRequestVerification;
 use App\Support\SensitiveLookup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class TeacherRosterImportTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_imported_teacher_names_are_used_as_the_teacher_account_creation_reference(): void
+    public function test_teacher_requests_must_use_a_name_from_the_imported_list(): void
     {
         Notification::fake();
+        Storage::fake('local');
         $counselor = User::factory()->create(['role' => 'guidance_counselor']);
 
         $this->actingAs($counselor)->post(route('admin.teachers.import'), [
@@ -45,48 +50,53 @@ class TeacherRosterImportTest extends TestCase
         $this->assertSame('New T. Teacher', TeacherReference::query()->where('name_lookup_hash', $teacherNameHash)->value('name'));
         $this->assertNotSame('New T. Teacher', DB::table('teacher_references')->where('name_lookup_hash', $teacherNameHash)->value('name'));
 
-        $this->actingAs($counselor)
-            ->get(route('admin.users.index'))
+        auth()->guard('web')->logout();
+        $this->get(route('teacher.register'))
             ->assertOk()
-            ->assertSee('View imported teacher names (1)')
+            ->assertSee('name="teacher_name"', false)
             ->assertSee('New T. Teacher');
 
-        $this->actingAs($counselor)->post(route('admin.teachers.store'), [
-            'first_name' => 'Other',
-            'last_name' => 'Teacher',
-            'middle_initial' => 'T.',
+        $this->from(route('teacher.register'))->post(route('teacher.register.store'), [
+            'teacher_name' => 'Other Teacher',
             'teacher_id' => 'TEACHER-OTHER-001',
             'email' => 'other.teacher@gmail.com',
             'password' => 'initialPassword123',
             'password_confirmation' => 'initialPassword123',
-            'counselor_password' => 'password',
-        ])->assertRedirect(route('admin.users.index'))
-            ->assertSessionHasErrors('first_name');
+            'id_photo' => $this->fakeIdPhoto(),
+        ])->assertRedirect(route('teacher.register'))
+            ->assertSessionHasErrors('teacher_name');
 
-        $this->assertDatabaseMissing('users', [
-            'id_number_lookup_hash' => SensitiveLookup::hash('id_number', 'TEACHER-OTHER-001'),
+        $this->assertDatabaseMissing('teacher_account_requests', [
+            'email_lookup_hash' => SensitiveLookup::hash('email', 'other.teacher@gmail.com'),
         ]);
 
-        $this->actingAs($counselor)->post(route('admin.teachers.store'), [
-            'first_name' => 'New',
-            'last_name' => 'Teacher',
-            'middle_initial' => 'T.',
+        $this->post(route('teacher.register.store'), [
+            'teacher_name' => 'New T. Teacher',
             'teacher_id' => 'TEACHER-NEW-001',
             'email' => 'new.teacher@gmail.com',
             'password' => 'initialPassword123',
             'password_confirmation' => 'initialPassword123',
-            'counselor_password' => 'password',
-        ])->assertRedirect(route('admin.users.index'))
-            ->assertSessionHas('status');
+            'id_photo' => $this->fakeIdPhoto(),
+        ])->assertRedirect(route('teacher.register'))
+            ->assertSessionHasNoErrors();
 
-        $this->assertDatabaseHas('users', [
-            'id_number_lookup_hash' => SensitiveLookup::hash('id_number', 'TEACHER-NEW-001'),
-        ]);
+        $teacherRequest = TeacherAccountRequest::query()
+            ->where('email_lookup_hash', SensitiveLookup::hash('email', 'new.teacher@gmail.com'))
+            ->firstOrFail();
+        $this->assertSame('New T. Teacher', $teacherRequest->name);
+        $this->assertSame(TeacherAccountRequest::PENDING, $teacherRequest->status);
+        $this->assertDatabaseMissing('users', ['email_lookup_hash' => SensitiveLookup::hash('email', 'new.teacher@gmail.com')]);
+        $this->assertNotNull($teacherRequest->id_photo_path);
+        Storage::disk('local')->assertExists($teacherRequest->id_photo_path);
+        $storedPhoto = Storage::disk('local')->get($teacherRequest->id_photo_path);
+        $this->assertStringStartsWith("\x89PNG\r\n\x1a\n", Crypt::decryptString($storedPhoto));
+        Notification::assertSentOnDemand(TeacherAccountRequestVerification::class);
     }
 
-    public function test_teacher_accounts_cannot_be_created_from_legacy_rows_until_the_list_is_reimported(): void
+    public function test_teacher_requests_are_blocked_until_the_teacher_list_is_reimported(): void
     {
-        $counselor = User::factory()->create(['role' => 'guidance_counselor']);
+        Notification::fake();
+        Storage::fake('local');
         TeacherReference::create([
             'name' => 'Legacy Teacher',
             'name_lookup_hash' => SensitiveLookup::hash(
@@ -95,25 +105,22 @@ class TeacherRosterImportTest extends TestCase
             ),
         ]);
 
-        $this->actingAs($counselor)
-            ->from(route('admin.users.index'))
-            ->post(route('admin.teachers.store'), [
-                'first_name' => 'Legacy',
-                'last_name' => 'Teacher',
-                'middle_initial' => 'L.',
+        $this->from(route('teacher.register'))
+            ->post(route('teacher.register.store'), [
+                'teacher_name' => 'Legacy Teacher',
                 'teacher_id' => 'TEACHER-LEGACY-001',
                 'email' => 'legacy.teacher@example.com',
                 'password' => 'initialPassword123',
                 'password_confirmation' => 'initialPassword123',
-                'counselor_password' => 'password',
+                'id_photo' => $this->fakeIdPhoto(),
             ])
-            ->assertRedirect(route('admin.users.index'))
+            ->assertRedirect(route('teacher.register'))
             ->assertSessionHasErrors([
-                'first_name' => 'Import the teacher list before creating teacher accounts.',
+                'teacher_name' => 'The guidance counselor has not imported the teacher list yet.',
             ]);
 
-        $this->assertDatabaseMissing('users', [
-            'id_number_lookup_hash' => SensitiveLookup::hash('id_number', 'TEACHER-LEGACY-001'),
+        $this->assertDatabaseMissing('teacher_account_requests', [
+            'email_lookup_hash' => SensitiveLookup::hash('email', 'legacy.teacher@example.com'),
         ]);
         $this->assertFalse(RosterImportState::isImported(RosterImportState::TEACHERS));
     }
@@ -134,5 +141,13 @@ class TeacherRosterImportTest extends TestCase
             ->assertSessionHasErrors('teacher_file');
 
         $this->assertSame(0, TeacherReference::query()->count());
+    }
+
+    private function fakeIdPhoto(): UploadedFile
+    {
+        return UploadedFile::fake()->createWithContent(
+            'teacher-id.png',
+            base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/r3sAAAAASUVORK5CYII=', true),
+        );
     }
 }

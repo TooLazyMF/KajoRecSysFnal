@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Concerns\PasswordValidationRules;
 use App\Models\RosterImportState;
 use App\Models\SlipSubmission;
 use App\Models\StudentReference;
+use App\Models\TeacherAccountRequest;
 use App\Models\TeacherReference;
 use App\Models\User;
 use App\Notifications\TeacherAccountCreated;
@@ -16,7 +16,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -24,8 +23,6 @@ use Throwable;
 
 class UserManagementController extends Controller
 {
-    use PasswordValidationRules;
-
     public function importStudents(Request $request): RedirectResponse
     {
         $request->validate([
@@ -247,8 +244,8 @@ class UserManagementController extends Controller
         });
 
         return to_route('guidance.dashboard')->with('status', count($rows).($isUpdate
-            ? ' teacher names updated. Only listed names can be used to create teacher accounts.'
-            : ' teacher names imported. Only listed names can be used to create teacher accounts.'));
+            ? ' teacher names updated. Teacher account requests must use a listed name.'
+            : ' teacher names imported. Teacher account requests must use a listed name.'));
     }
 
     /** @return array<int, array<int, string>> */
@@ -486,105 +483,18 @@ class UserManagementController extends Controller
             ->withExists(['accountSessionLogs as has_logged_in'])
             ->orderBy('id')
             ->paginate(25);
-        $hasImportedTeacherFile = RosterImportState::isImported(RosterImportState::TEACHERS);
-        $teacherReferences = $hasImportedTeacherFile
-            ? TeacherReference::query()
-                ->get(['id', 'name'])
-                ->sortBy(fn (TeacherReference $reference) => mb_strtolower($reference->name))
-                ->values()
-            : collect();
+        $teacherRequests = TeacherAccountRequest::query()
+            ->where('status', TeacherAccountRequest::PENDING)
+            ->latest()
+            ->get();
 
         return view('admin.users', compact(
             'students',
             'studentReferences',
             'studentCifs',
             'teachers',
-            'teacherReferences',
-            'hasImportedTeacherFile',
+            'teacherRequests',
         ));
-    }
-
-    public function createTeacher(Request $request): RedirectResponse
-    {
-        $validator = Validator::make($request->all(), [
-            'first_name' => ['required', 'string', 'max:100'],
-            'last_name' => ['required', 'string', 'max:100'],
-            'middle_initial' => ['required', 'string', 'max:5', 'regex:/^[A-Za-z](?:\.)?$/'],
-            'teacher_id' => ['required', 'string', 'max:255', new UniqueEncryptedLookup('users', 'id_number')],
-            'email' => ['required', 'email', 'max:255', new UniqueEncryptedLookup('users', 'email')],
-            'password' => [
-                ...$this->passwordRules(),
-            ],
-            'counselor_password' => ['required', 'string'],
-        ], [
-            'password.regex' => 'Password must contain letters and numbers only.',
-        ]);
-
-        if ($validator->fails()) {
-            return back()
-                ->withErrors($validator)
-                ->withInput($request->except(['password', 'counselor_password']));
-        }
-
-        $counselor = $request->user();
-        $validated = $validator->validated();
-        $teacherName = trim($validated['first_name'].' '.$validated['middle_initial'].' '.$validated['last_name']);
-
-        if (! RosterImportState::isImported(RosterImportState::TEACHERS)) {
-            return back()
-                ->withErrors(['first_name' => 'Import the teacher list before creating teacher accounts.'])
-                ->withInput($request->except(['password', 'counselor_password']));
-        }
-
-        $nameLookupHash = SensitiveLookup::hash(
-            'name',
-            TeacherReference::normalizeName($teacherName),
-        );
-
-        if (! TeacherReference::query()->where('name_lookup_hash', $nameLookupHash)->exists()) {
-            return back()
-                ->withErrors(['first_name' => 'The teacher name must match a name in the imported teacher list.'])
-                ->withInput($request->except(['password', 'counselor_password']));
-        }
-
-        if (! $counselor instanceof User
-            || ! Hash::check($validated['counselor_password'], $counselor->getAuthPassword())) {
-            return back()
-                ->withErrors(['counselor_password' => 'The counselor password is incorrect.'])
-                ->withInput($request->except(['password', 'counselor_password']));
-        }
-
-        if (Hash::check($validated['password'], $counselor->getAuthPassword())) {
-            return back()
-                ->withErrors(['password' => 'The teacher initial password must be different from your counselor password.'])
-                ->withInput($request->except(['password', 'counselor_password']));
-        }
-
-        $teacher = User::forceCreate([
-            'name' => $teacherName,
-            'email' => $validated['email'],
-            'id_number' => $validated['teacher_id'],
-            'gender' => null,
-            'role' => 'teacher',
-            'password' => $validated['password'],
-            'is_active' => false,
-            'must_change_password' => false,
-        ]);
-
-        $verificationSent = true;
-        try {
-            $teacher->notify(new TeacherAccountCreated);
-        } catch (Throwable $exception) {
-            report($exception);
-            $verificationSent = false;
-        }
-
-        return to_route('admin.users.index')->with(
-            'status',
-            $verificationSent
-                ? 'Teacher account created. A verification email was sent to '.$teacher->email.'.'
-                : 'Teacher account created, but the verification email could not be sent. Please check your internet connection and edit the teacher account to retry.'
-        );
     }
 
     public function editTeacher(User $user): View

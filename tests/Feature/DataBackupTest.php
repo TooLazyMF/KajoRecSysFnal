@@ -7,6 +7,7 @@ use App\Models\RosterImportState;
 use App\Models\SlipAssignment;
 use App\Models\SlipInformation;
 use App\Models\SlipSubmission;
+use App\Models\TeacherAccountRequest;
 use App\Models\TeacherReference;
 use App\Models\User;
 use App\Support\SensitiveLookup;
@@ -34,6 +35,7 @@ class DataBackupTest extends TestCase
         'account_session_logs',
         'passkeys',
         'teacher_references',
+        'teacher_account_requests',
         'roster_import_states',
     ];
 
@@ -64,9 +66,10 @@ class DataBackupTest extends TestCase
         $archive->close();
 
         $this->assertSame('kajorec-database-backup', $payload['format']);
-        $this->assertSame(4, $payload['version']);
+        $this->assertSame(5, $payload['version']);
         $this->assertSame(self::TABLES, array_keys($payload['tables']));
         $this->assertCount(1, $payload['tables']['teacher_references']);
+        $this->assertSame([], $payload['tables']['teacher_account_requests']);
         $this->assertCount(1, $payload['tables']['roster_import_states']);
         $this->assertNotSame('Jane Teacher', $payload['tables']['teacher_references'][0]['name']);
         $this->actingAs($teacher)
@@ -102,6 +105,50 @@ class DataBackupTest extends TestCase
         $this->assertSame($hash, $payload['files'][$path]);
         $this->assertSame($contents, $archive->getFromName("files/{$hash}"));
         $archive->close();
+    }
+
+    public function test_backup_restores_pending_teacher_request_and_encrypted_id_photo(): void
+    {
+        Storage::fake('local');
+        $counselor = $this->createUser('guidance_counselor');
+        $photoPath = 'teacher-account-requests/pending-id.png';
+        $photoContents = 'encrypted teacher ID photo';
+        $encryptedPhoto = Crypt::encryptString($photoContents);
+        Storage::disk('local')->put($photoPath, $encryptedPhoto);
+
+        $request = TeacherAccountRequest::create([
+            'name' => 'Jane Teacher',
+            'email' => 'jane.teacher@example.test',
+            'id_number' => 'TEACHER-123',
+            'password' => 'PendingTeacherPassword123!',
+            'id_photo_path' => $photoPath,
+            'id_photo_mime_type' => 'image/png',
+            'status' => TeacherAccountRequest::PENDING,
+            'email_verified_at' => now(),
+        ]);
+
+        $download = $this->actingAs($counselor)->get(route('admin.data-backup.download'));
+        $download->assertOk();
+        $archiveContents = file_get_contents($download->baseResponse->getFile()->getPathname());
+        $this->assertIsString($archiveContents);
+        $backup = UploadedFile::fake()->createWithContent('teacher-request-backup.zip', $archiveContents);
+
+        $request->delete();
+        Storage::disk('local')->delete($photoPath);
+
+        $this->actingAs($counselor)
+            ->from(route('guidance.dashboard'))
+            ->post(route('admin.data-backup.import'), ['backup_file' => $backup])
+            ->assertRedirect(route('guidance.dashboard'))
+            ->assertSessionHas('backup_status');
+
+        $restoredRequest = TeacherAccountRequest::query()->sole();
+        $restoredPhotoPath = $restoredRequest->id_photo_path;
+        $this->assertSame('Jane Teacher', $restoredRequest->name);
+        $this->assertSame('jane.teacher@example.test', $restoredRequest->email);
+        $this->assertSame(TeacherAccountRequest::PENDING, $restoredRequest->status);
+        $this->assertSame("kajorec-imports/".hash('sha256', $encryptedPhoto).'.png', $restoredPhotoPath);
+        $this->assertSame($photoContents, Crypt::decryptString(Storage::disk('local')->get($restoredPhotoPath)));
     }
 
     public function test_encrypted_records_can_be_exported_and_imported_without_losing_data(): void
@@ -331,6 +378,18 @@ class DataBackupTest extends TestCase
         $this->assertFalse(RosterImportState::isImported(RosterImportState::TEACHERS));
     }
 
+    public function test_previous_version_four_backups_without_teacher_account_requests_remain_importable(): void
+    {
+        $counselor = $this->createUser('guidance_counselor');
+        $backup = $this->createBackupUpload([], ['version' => 4]);
+
+        $this->actingAs($counselor)
+            ->from(route('guidance.dashboard'))
+            ->post(route('admin.data-backup.import'), ['backup_file' => $backup])
+            ->assertRedirect(route('guidance.dashboard'))
+            ->assertSessionHas('backup_status');
+    }
+
     public function test_import_rejects_accounts_whose_email_and_id_number_match_different_users(): void
     {
         $counselor = $this->createUser('guidance_counselor');
@@ -379,7 +438,7 @@ class DataBackupTest extends TestCase
             $tables[$table] ??= [];
         }
 
-        $version = $overrides['version'] ?? 4;
+        $version = $overrides['version'] ?? 5;
 
         if ($version === 1) {
             $legacyTables = [];
@@ -409,9 +468,13 @@ class DataBackupTest extends TestCase
             $schema = $legacySchema;
         } elseif ($version === 2) {
             unset($tables['teacher_references'], $schema['teacher_references']);
+            unset($tables['teacher_account_requests'], $schema['teacher_account_requests']);
             unset($tables['roster_import_states'], $schema['roster_import_states']);
         } elseif ($version === 3) {
+            unset($tables['teacher_account_requests'], $schema['teacher_account_requests']);
             unset($tables['roster_import_states'], $schema['roster_import_states']);
+        } elseif ($version === 4) {
+            unset($tables['teacher_account_requests'], $schema['teacher_account_requests']);
         }
 
         $payload = [

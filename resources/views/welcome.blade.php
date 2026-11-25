@@ -1100,7 +1100,7 @@
                     <p class="session-status" role="status">The guidance counselor has not imported the student list yet. Student registration will be available after it is imported.</p>
                 @endunless
                 @unless ($hasImportedTeacherList)
-                    <p class="session-status" role="status">The teacher list has not been imported yet. Teacher accounts are managed by the guidance counselor.</p>
+                    <p class="session-status" role="status">Teacher account requests require an imported teacher list and counselor approval.</p>
                 @endunless
                 @error('registration')
                     <p class="field-error" role="alert">{{ $message }}</p>
@@ -1240,6 +1240,10 @@
                 <p class="switch-copy">
                     Already have an account?
                     <button class="text-button" type="button" data-show-panel="login">Sign in</button>
+                </p>
+                <p class="switch-copy">
+                    Teacher?
+                    <a class="text-button" href="{{ route('teacher.register') }}">Request a teacher account</a>
                 </p>
             </div>
 

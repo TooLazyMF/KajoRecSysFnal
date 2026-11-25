@@ -4,7 +4,7 @@
             <header>
                 <h1 class="text-3xl font-bold">Manage Users</h1>
                 <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
-                    Activate or deactivate teacher and student accounts. Students can also be marked as graduates.
+                    Review teacher account requests, manage teacher and student accounts, and mark students as graduates.
                 </p>
             </header>
 
@@ -89,102 +89,48 @@
             </section>
 
             <section class="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
-                <div class="flex flex-col gap-5 p-5 sm:p-6">
-                    <div>
-                        <h2 class="text-xl font-bold">Create Teacher Account</h2>
-                        <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                            Enter the teacher's details. KajoRec will email the teacher a verification link before activating the account. Their name must match the imported teacher list.
-                        </p>
-                        @unless ($hasImportedTeacherFile)
-                            <p role="status" class="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                                Import the teacher list before creating teacher accounts.
-                                <a href="{{ route('guidance.dashboard') }}#teacher-import" class="font-semibold underline">Import teacher list</a>
-                            </p>
-                        @endunless
-                        @if ($hasImportedTeacherFile && $teacherReferences->isNotEmpty())
-                            <details class="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-950/30">
-                                <summary class="cursor-pointer font-semibold text-blue-900 dark:text-blue-200">View imported teacher names ({{ $teacherReferences->count() }})</summary>
-                                <ul class="mt-2 max-h-48 list-inside list-disc space-y-1 overflow-y-auto text-neutral-700 dark:text-neutral-300">
-                                    @foreach ($teacherReferences as $teacherReference)
-                                        <li>{{ $teacherReference->name }}</li>
-                                    @endforeach
-                                </ul>
-                            </details>
-                        @elseif ($hasImportedTeacherFile)
-                            <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-                                The imported teacher list is empty. Import a non-empty list before creating teacher accounts.
-                            </p>
-                        @endif
-                    </div>
-                    <form id="create-teacher-form" method="POST" action="{{ route('admin.teachers.store') }}" class="grid gap-4 md:grid-cols-2">
-                        @csrf
-                        <label class="block">
-                            <span class="mb-2 block text-sm font-semibold">First name</span>
-                            <input name="first_name" type="text" value="{{ old('first_name') }}" autocomplete="given-name" required maxlength="100" class="w-full rounded-lg border-neutral-300 bg-white px-3 py-2.5 shadow-sm dark:border-neutral-600 dark:bg-neutral-800 dark:text-white">
-                            @error('first_name')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
-                        </label>
-                        <label class="block">
-                            <span class="mb-2 block text-sm font-semibold">Last name</span>
-                            <input name="last_name" type="text" value="{{ old('last_name') }}" autocomplete="family-name" required maxlength="100" class="w-full rounded-lg border-neutral-300 bg-white px-3 py-2.5 shadow-sm dark:border-neutral-600 dark:bg-neutral-800 dark:text-white">
-                            @error('last_name')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
-                        </label>
-                        <label class="block">
-                            <span class="mb-2 block text-sm font-semibold">Middle initial</span>
-                            <input name="middle_initial" type="text" value="{{ old('middle_initial') }}" required maxlength="2" pattern="[A-Za-z]\.?" class="w-full rounded-lg border-neutral-300 bg-white px-3 py-2.5 shadow-sm dark:border-neutral-600 dark:bg-neutral-800 dark:text-white">
-                            @error('middle_initial')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
-                        </label>
-                        <label class="block">
-                            <span class="mb-2 block text-sm font-semibold">Teacher ID</span>
-                            <input name="teacher_id" type="text" value="{{ old('teacher_id') }}" required maxlength="255" class="w-full rounded-lg border-neutral-300 bg-white px-3 py-2.5 shadow-sm dark:border-neutral-600 dark:bg-neutral-800 dark:text-white">
-                            @error('teacher_id')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
-                        </label>
-                        <label class="block md:col-span-2">
-                            <span class="mb-2 block text-sm font-semibold">Gmail</span>
-                            <input name="email" type="email" value="{{ old('email') }}" autocomplete="email" required maxlength="255" placeholder="teacher@gmail.com" class="w-full rounded-lg border-neutral-300 bg-white px-3 py-2.5 shadow-sm dark:border-neutral-600 dark:bg-neutral-800 dark:text-white">
-                            @error('email')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
-                        </label>
-                        <label class="block">
-                            <span class="mb-2 block text-sm font-semibold">Password</span>
-                            <span class="relative block">
-                                <input id="teacher-password" name="password" type="password" required minlength="8" maxlength="255" pattern="(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]+" autocomplete="new-password" class="w-full rounded-lg border-neutral-300 bg-white px-3 py-2.5 pr-16 shadow-sm dark:border-neutral-600 dark:bg-neutral-800 dark:text-white">
-                                <button type="button" data-toggle-password aria-controls="teacher-password" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-3 text-sm font-semibold text-neutral-600 dark:text-neutral-300">Show</button>
-                            </span>
-                            @error('password')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
-                        </label>
-                        <label class="block">
-                            <span class="mb-2 block text-sm font-semibold">Confirm password</span>
-                            <span class="relative block">
-                                <input id="teacher-password-confirmation" name="password_confirmation" type="password" required minlength="8" maxlength="255" pattern="(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]+" title="Use letters and numbers only, with at least one of each." autocomplete="new-password" class="w-full rounded-lg border-neutral-300 bg-white px-3 py-2.5 pr-16 shadow-sm dark:border-neutral-600 dark:bg-neutral-800 dark:text-white">
-                                <button type="button" data-toggle-password aria-controls="teacher-password-confirmation" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-3 text-sm font-semibold text-neutral-600 dark:text-neutral-300">Show</button>
-                            </span>
-                            <span id="teacher-password-match" data-password-match-feedback class="hidden" aria-live="polite"></span>
-                            @error('password_confirmation')<span class="mt-1 block text-sm text-red-600">{{ $message }}</span>@enderror
-                        </label>
-                        <button type="button" data-open-teacher-approval class="md:col-span-2 justify-self-start rounded-lg bg-[#09ba44] px-5 py-2.5 font-semibold text-[#092010] hover:bg-[#079b38] dark:bg-[#20783e] dark:text-white">Create account</button>
-                    </form>
+                <div class="p-5 sm:p-6">
+                    <h2 class="text-xl font-bold">Teacher Account Requests</h2>
+                    <p class="mt-1 text-sm text-neutral-600 dark:text-neutral-400">Review ID photos only after teachers verify their email. Photos are deleted after approval or decline.</p>
+                </div>
+                <div class="space-y-4 px-5 pb-5 sm:px-6 sm:pb-6">
+                    @forelse ($teacherRequests as $teacherRequest)
+                        <article class="rounded-xl border border-neutral-200 p-4 dark:border-neutral-700">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div>
+                                    <h3 class="font-semibold">{{ $teacherRequest->name }}</h3>
+                                    <p class="text-sm text-neutral-600 dark:text-neutral-400">{{ $teacherRequest->email }}</p>
+                                    <p class="text-sm text-neutral-600 dark:text-neutral-400">Teacher ID: {{ $teacherRequest->id_number }}</p>
+                                    <p class="mt-1 text-xs text-neutral-500">Submitted {{ $teacherRequest->created_at?->format('M j, Y g:i A') }}</p>
+                                </div>
+                                @if ($teacherRequest->email_verified_at)
+                                    <a href="{{ route('admin.teacher-requests.photo', $teacherRequest) }}" target="_blank" rel="noopener" class="self-start rounded-lg border border-blue-300 px-3 py-2 text-sm font-semibold text-blue-700 dark:border-blue-700 dark:text-blue-300">View ID photo</a>
+                                @else
+                                    <span class="self-start rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900 dark:bg-amber-900/40 dark:text-amber-200">Awaiting email verification</span>
+                                @endif
+                            </div>
+                            @if ($teacherRequest->email_verified_at)
+                                <div class="mt-4 flex flex-col gap-3 border-t border-neutral-200 pt-4 dark:border-neutral-700 sm:flex-row sm:items-end">
+                                    <form method="POST" action="{{ route('admin.teacher-requests.approve', $teacherRequest) }}">
+                                        @csrf
+                                        <button type="submit" class="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800">Approve account</button>
+                                    </form>
+                                    <form method="POST" action="{{ route('admin.teacher-requests.decline', $teacherRequest) }}" class="flex flex-1 flex-col gap-2 sm:flex-row sm:items-end">
+                                        @csrf
+                                        <label class="flex-1 text-sm font-medium">
+                                            Optional note for the teacher
+                                            <input name="decision_message" type="text" maxlength="1000" class="mt-1 w-full rounded-lg border-neutral-300 bg-white px-3 py-2 dark:border-neutral-600 dark:bg-neutral-800">
+                                        </label>
+                                        <button type="submit" class="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-300">Decline</button>
+                                    </form>
+                                </div>
+                            @endif
+                        </article>
+                    @empty
+                        <p class="rounded-lg bg-neutral-50 p-5 text-center text-neutral-500 dark:bg-neutral-800">There are no teacher account requests waiting for review.</p>
+                    @endforelse
                 </div>
             </section>
-
-            <dialog id="teacher-approval-modal" class="fixed inset-0 m-auto w-[min(28rem,calc(100%-2rem))] rounded-2xl border border-neutral-200 bg-white p-6 text-neutral-900 shadow-2xl backdrop:bg-black/50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-zinc-100" aria-labelledby="teacher-approval-heading">
-                <h2 id="teacher-approval-heading" class="text-xl font-bold">Confirm your password</h2>
-                <p class="mt-2 text-sm text-neutral-600 dark:text-neutral-300">
-                    Enter your counselor account password to approve creating this teacher account.
-                </p>
-                @error('counselor_password')
-                    <p class="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300" role="alert">{{ $message }}</p>
-                @enderror
-                <label class="mt-4 block">
-                    <span class="mb-2 block text-sm font-semibold">Counselor password</span>
-                    <span class="relative block">
-                        <input id="counselor-confirm-password" form="create-teacher-form" name="counselor_password" type="password" required autocomplete="current-password" class="w-full rounded-lg border-neutral-300 bg-white px-3 py-2.5 pr-16 shadow-sm dark:border-neutral-600 dark:bg-neutral-800 dark:text-white">
-                        <button type="button" data-toggle-password aria-controls="counselor-confirm-password" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-3 text-sm font-semibold text-neutral-600 dark:text-neutral-300">Show</button>
-                    </span>
-                </label>
-                <div class="mt-6 flex justify-end gap-3">
-                    <button type="button" data-close-teacher-approval class="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-semibold dark:border-neutral-600">Cancel</button>
-                    <button type="submit" form="create-teacher-form" class="rounded-lg bg-[#09ba44] px-4 py-2 text-sm font-semibold text-[#092010] hover:bg-[#079b38] dark:bg-[#20783e] dark:text-white">Approve and create</button>
-                </div>
-            </dialog>
 
             <section class="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
                 <h2 class="px-6 pt-6 text-xl font-bold">Teacher Accounts</h2>
@@ -302,48 +248,6 @@
 <script>
     (() => {
         const initializeTeacherManagement = () => {
-        const teacherApprovalModal = document.getElementById('teacher-approval-modal');
-        const teacherCreateForm = document.getElementById('create-teacher-form');
-        if (!teacherCreateForm || teacherCreateForm.dataset.passwordControlsInitialized) return;
-        teacherCreateForm.dataset.passwordControlsInitialized = 'true';
-        const teacherApprovalTrigger = document.querySelector('[data-open-teacher-approval]');
-        const teacherPassword = document.getElementById('teacher-password');
-        const teacherPasswordConfirmation = document.getElementById('teacher-password-confirmation');
-
-        const checkTeacherPasswordMatch = () => {
-            return Boolean(
-                teacherPassword?.value
-                && teacherPassword.checkValidity()
-                && teacherPasswordConfirmation?.value
-                && teacherPasswordConfirmation.checkValidity(),
-            );
-        };
-
-        teacherApprovalTrigger?.addEventListener('click', () => {
-            if (!checkTeacherPasswordMatch()) {
-                if (!teacherPassword?.checkValidity()) {
-                    teacherPassword?.reportValidity();
-                } else {
-                    teacherPasswordConfirmation?.reportValidity();
-                }
-                return;
-            }
-            teacherApprovalModal.showModal();
-        });
-        teacherCreateForm?.addEventListener('keydown', (event) => {
-            if (event.key !== 'Enter' || event.target.matches('textarea, button')) return;
-            event.preventDefault();
-            teacherApprovalTrigger?.click();
-        });
-        document.querySelector('[data-close-teacher-approval]')?.addEventListener('click', () => teacherApprovalModal.close());
-        teacherApprovalModal?.addEventListener('click', (event) => {
-            if (event.target === teacherApprovalModal) teacherApprovalModal.close();
-        });
-
-        if (@json($errors->has('counselor_password'))) {
-            teacherApprovalModal?.showModal();
-        }
-
         const studentSearch = document.getElementById('manage_student_search');
         if (studentSearch) {
             const courseGroups = Array.from(document.querySelectorAll('[data-college-group]'));

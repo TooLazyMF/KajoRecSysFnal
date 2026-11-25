@@ -2,18 +2,13 @@
 
 namespace Tests\Feature;
 
-use App\Models\RosterImportState;
 use App\Models\StudentReference;
-use App\Models\TeacherReference;
 use App\Models\User;
 use App\Notifications\EmailOtp;
-use App\Notifications\TeacherAccountCreated;
-use App\Support\SensitiveLookup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 class UserManagementTest extends TestCase
@@ -48,7 +43,7 @@ class UserManagementTest extends TestCase
             ->assertSee('Manage Users')
             ->assertSee('Teacher Account')
             ->assertSee('Student Account')
-            ->assertSee('Create Teacher Account')
+            ->assertSee('Teacher Account Requests')
             ->assertSee('Deactivate')
             ->assertSee('Mark as graduate');
 
@@ -140,84 +135,6 @@ class UserManagementTest extends TestCase
             ->assertForbidden();
 
         $this->assertSame('Updated U. Teacher', $teacher->fresh()->name);
-    }
-
-    public function test_guidance_can_create_teacher_accounts_and_teacher_must_verify_email_to_activate(): void
-    {
-        Notification::fake();
-        $counselor = $this->createUser(['role' => 'guidance_counselor']);
-        TeacherReference::create([
-            'name' => 'New T. Teacher',
-            'name_lookup_hash' => SensitiveLookup::hash(
-                'name',
-                TeacherReference::normalizeName('New T. Teacher'),
-            ),
-        ]);
-        RosterImportState::markImported(RosterImportState::TEACHERS);
-
-        $this->actingAs($counselor)
-            ->get(route('admin.users.index'))
-            ->assertOk()
-            ->assertSee('id="teacher-approval-modal"', false)
-            ->assertSee('name="counselor_password"', false)
-            ->assertSee('aria-label="Show password"', false)
-            ->assertSee('data-toggle-password', false);
-
-        $this->actingAs($counselor)
-            ->post(route('admin.teachers.store'), [
-                'first_name' => 'New',
-                'last_name' => 'Teacher',
-                'middle_initial' => 'T.',
-                'teacher_id' => 'TEACHER-NEW-001',
-                'email' => 'new.teacher@gmail.com',
-                'password' => 'initialPassword123',
-                'password_confirmation' => 'initialPassword123',
-                'counselor_password' => 'wrong-password',
-            ])
-            ->assertRedirect(route('admin.users.index'))
-            ->assertSessionHasErrors('counselor_password');
-
-        $this->assertDatabaseMissing('users', ['name_lookup_hash' => SensitiveLookup::hash('name', 'New Teacher')]);
-
-        $this->actingAs($counselor)
-            ->post(route('admin.teachers.store'), [
-                'first_name' => 'New',
-                'last_name' => 'Teacher',
-                'middle_initial' => 'T.',
-                'teacher_id' => 'TEACHER-NEW-001',
-                'email' => 'new.teacher@gmail.com',
-                'password' => 'initialPassword123',
-                'password_confirmation' => 'initialPassword123',
-                'counselor_password' => 'password',
-            ])
-            ->assertRedirect(route('admin.users.index'))
-            ->assertSessionHas('status');
-
-        $teacher = User::query()
-            ->where('name_lookup_hash', SensitiveLookup::hash('name', 'New T. Teacher'))
-            ->firstOrFail();
-        $this->assertSame('teacher', $teacher->role);
-        $this->assertSame('new.teacher@gmail.com', $teacher->email);
-        $this->assertSame('TEACHER-NEW-001', $teacher->id_number);
-        $this->assertNull($teacher->gender);
-        $this->assertFalse($teacher->hasVerifiedEmail());
-        $this->assertFalse($teacher->is_active);
-        $this->assertTrue(Hash::check('initialPassword123', $teacher->password));
-        $this->assertFalse($teacher->must_change_password);
-        Notification::assertSentTo($teacher, TeacherAccountCreated::class);
-
-        $verificationUrl = URL::temporarySignedRoute(
-            'teacher-account.verify',
-            now()->addHour(),
-            ['user' => $teacher->id],
-        );
-
-        $this->get($verificationUrl)
-            ->assertRedirect(route('login'))
-            ->assertSessionHas('status');
-
-        $this->assertTrue($teacher->fresh()->hasVerifiedEmail());
-        $this->assertTrue($teacher->fresh()->is_active);
     }
 
     public function test_teacher_must_complete_profile_and_verify_email_before_dashboard_access(): void

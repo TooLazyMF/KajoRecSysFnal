@@ -16,7 +16,7 @@
         @endunless
         @unless ($hasImportedTeacherList)
             <p role="status" class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                The teacher list has not been imported yet. Teacher accounts are managed by the guidance counselor.
+                Teacher account requests require an imported teacher list and counselor approval.
             </p>
         @endunless
 
@@ -97,5 +97,9 @@
             <span>{{ __('Already have an account?') }}</span>
                 <flux:link :href="route('home')" wire:navigate>{{ __('Log in') }}</flux:link>
         </div>
+        <p class="text-center text-sm text-zinc-600 dark:text-zinc-400">
+            Teacher?
+            <flux:link :href="route('teacher.register')">{{ __('Request a teacher account') }}</flux:link>
+        </p>
     </div>
 </x-layouts::auth>

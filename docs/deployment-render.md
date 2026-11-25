@@ -34,7 +34,8 @@ runtime does not include Composer, so deploy it as a Docker web service instead.
    password before it can access the system; verify the new email to continue.
    Existing counselor accounts are preserved.
 5. Import the complete student and teacher lists from the guidance dashboard
-   before enabling student registration or creating teacher accounts. Existing
+   before enabling student registration or teacher account requests. Teachers
+   verify their email and submit an ID photo for counselor approval. Existing
    roster rows are preserved during deployment but do not count as a new import;
    each list must be imported through the dashboard after this version is
    deployed. Student imports replace the reference roster and deactivate

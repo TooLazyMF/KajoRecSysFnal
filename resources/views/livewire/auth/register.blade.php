@@ -30,7 +30,7 @@
            <!-- ID Number -->
             <flux:input
                 name="id_number"
-                :label="__('Student / Teacher ID')"
+                :label="__('Student ID')"
                 :value="old('id_number')"
                 type="text"
                 required
@@ -115,6 +115,11 @@
             </flux:link>
 
         </div>
+
+        <p class="text-center text-sm text-zinc-600 dark:text-zinc-400">
+            Teacher?
+            <flux:link :href="route('teacher.register')">{{ __('Request a teacher account') }}</flux:link>
+        </p>
 
     </div>
 

@@ -13,6 +13,7 @@ use App\Http\Controllers\SlipInformationController;
 use App\Http\Controllers\SlipSubmissionController;
 use App\Http\Controllers\StudentDashboardController;
 use App\Http\Controllers\StudentRecordController;
+use App\Http\Controllers\TeacherAccountRequestController;
 use App\Http\Controllers\TeacherProfileController;
 use App\Http\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,18 @@ Route::post('/', [AuthenticatedSessionController::class, 'store'])
 Route::post('register', [RegistrationController::class, 'store'])
     ->middleware(['guest', 'throttle:5,1'])
     ->name('register.store');
+Route::get('teacher-register', [TeacherAccountRequestController::class, 'create'])
+    ->middleware('guest')
+    ->name('teacher.register');
+Route::post('teacher-register', [TeacherAccountRequestController::class, 'store'])
+    ->middleware(['guest', 'throttle:5,1'])
+    ->name('teacher.register.store');
+Route::post('teacher-register/resend-verification', [TeacherAccountRequestController::class, 'resendVerification'])
+    ->middleware(['guest', 'throttle:5,1'])
+    ->name('teacher.register.resend-verification');
+Route::get('teacher-registration/{teacherAccountRequest}/verify', [TeacherAccountRequestController::class, 'verify'])
+    ->middleware(['signed', 'throttle:10,1'])
+    ->name('teacher-registration.verify');
 
 Route::view('forgot-password', 'pages::auth.forgot-password')->name('password.request');
 Route::post('forgot-password', [PasswordResetOtpController::class, 'send'])
@@ -139,7 +152,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware('role:guidance_counselor')->prefix('admin')->name('admin.')->group(function () {
         Route::get('users', [UserManagementController::class, 'index'])->name('users.index');
-        Route::post('teachers', [UserManagementController::class, 'createTeacher'])->name('teachers.store');
+        Route::get('teachers/requests/{teacherAccountRequest}/id-photo', [TeacherAccountRequestController::class, 'showIdPhoto'])
+            ->name('teacher-requests.photo');
+        Route::post('teachers/requests/{teacherAccountRequest}/approve', [TeacherAccountRequestController::class, 'approve'])
+            ->name('teacher-requests.approve');
+        Route::post('teachers/requests/{teacherAccountRequest}/decline', [TeacherAccountRequestController::class, 'decline'])
+            ->name('teacher-requests.decline');
         Route::post('teachers/import', [UserManagementController::class, 'importTeachers'])->name('teachers.import');
         Route::get('teachers/{user}/edit', [UserManagementController::class, 'editTeacher'])->name('teachers.edit');
         Route::put('teachers/{user}', [UserManagementController::class, 'updateTeacher'])->name('teachers.update');

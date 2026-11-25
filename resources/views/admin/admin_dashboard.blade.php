@@ -293,7 +293,7 @@
                         <p class="text-xs font-bold uppercase tracking-wide text-blue-700 dark:text-blue-400">Registration reference</p>
                         <h2 class="mt-1 text-lg font-semibold">{{ $hasImportedTeacherFile ? 'Update the imported file' : 'Import teacher names file' }}</h2>
                         <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-                            Upload the complete Excel or CSV file with one teacher name per row. When a list is imported, teacher account names must match it. Replacing the list does not deactivate existing accounts.
+                            Upload the complete Excel or CSV file with one teacher name per row. Teacher requests must use a listed name and include an ID photo for counselor review. Replacing the list does not deactivate existing accounts.
                         </p>
                     </div>
                     <form method="POST" action="{{ route('admin.teachers.import') }}" enctype="multipart/form-data" class="mt-5 space-y-4">
