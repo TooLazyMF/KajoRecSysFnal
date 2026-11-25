@@ -14,13 +14,7 @@
                 The guidance counselor has not imported the student list yet. Student registration will be available after it is imported.
             </p>
         @endunless
-        @unless ($hasImportedTeacherList)
-            <p role="status" class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                Teacher account requests require an imported teacher list and counselor approval.
-            </p>
-        @endunless
-
-        <form method="POST" action="{{ route('register.store') }}" class="flex flex-col gap-6">
+        <form method="POST" action="{{ route('register.store') }}" enctype="multipart/form-data" class="flex flex-col gap-6">
             @csrf
             <flux:input name="first_name" :label="__('First name')" :value="old('first_name')" type="text" required autofocus autocomplete="given-name" />
             <flux:input name="last_name" :label="__('Last name')" :value="old('last_name')" type="text" required autocomplete="family-name" />
@@ -60,6 +54,7 @@
                 autocomplete="email"
                 placeholder="email@example.com"
             />
+            <flux:input name="verification_photo" :label="__('Faculty verification photo (teachers only)')" type="file" accept="image/jpeg,image/png,image/webp" capture="user" />
 
             <!-- Password -->
             <flux:input
@@ -104,7 +99,7 @@
         </div>
         <p class="text-center text-sm text-zinc-600 dark:text-zinc-400">
             Teacher?
-            <flux:link :href="route('teacher.register')">{{ __('Request a teacher account') }}</flux:link>
+            <flux:text>{{ __('Teacher requests are reviewed by the guidance counselor after you submit the registration form.') }}</flux:text>
         </p>
     </div>
 </x-layouts::auth>

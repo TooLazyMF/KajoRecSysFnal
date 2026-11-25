@@ -8,6 +8,7 @@ use App\Http\Controllers\GuidanceCounselorProfileController;
 use App\Http\Controllers\LoginTwoFactorOtpController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PasswordResetOtpController;
+use App\Http\Controllers\PushNotificationController;
 use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\SlipInformationController;
 use App\Http\Controllers\SlipSubmissionController;
@@ -26,15 +27,6 @@ Route::post('/', [AuthenticatedSessionController::class, 'store'])
 Route::post('register', [RegistrationController::class, 'store'])
     ->middleware(['guest', 'throttle:5,1'])
     ->name('register.store');
-Route::get('teacher-register', [TeacherAccountRequestController::class, 'create'])
-    ->middleware('guest')
-    ->name('teacher.register');
-Route::post('teacher-register', [TeacherAccountRequestController::class, 'store'])
-    ->middleware(['guest', 'throttle:5,1'])
-    ->name('teacher.register.store');
-Route::post('teacher-register/resend-verification', [TeacherAccountRequestController::class, 'resendVerification'])
-    ->middleware(['guest', 'throttle:5,1'])
-    ->name('teacher.register.resend-verification');
 Route::get('teacher-registration/{teacherAccountRequest}/verify', [TeacherAccountRequestController::class, 'verify'])
     ->middleware(['signed', 'throttle:10,1'])
     ->name('teacher-registration.verify');
@@ -88,6 +80,13 @@ Route::middleware(['auth', 'role:guidance_counselor'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::prefix('api')->name('api.')->group(function () {
+        Route::post('push/subscribe', [PushNotificationController::class, 'subscribe'])
+            ->name('push.subscribe');
+        Route::post('push/test', [PushNotificationController::class, 'test'])
+            ->name('push.test');
+    });
+
     Route::post('account-activity', [AccountActivityController::class, 'touch'])
         ->name('account-activity.touch');
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
@@ -159,7 +158,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('teacher-requests.approve');
         Route::post('teachers/requests/{teacherAccountRequest}/decline', [TeacherAccountRequestController::class, 'decline'])
             ->name('teacher-requests.decline');
-        Route::post('teachers/import', [UserManagementController::class, 'importTeachers'])->name('teachers.import');
         Route::get('teachers/{user}/edit', [UserManagementController::class, 'editTeacher'])->name('teachers.edit');
         Route::put('teachers/{user}', [UserManagementController::class, 'updateTeacher'])->name('teachers.update');
         Route::post('students/import', [UserManagementController::class, 'importStudents'])->name('students.import');

@@ -57,6 +57,7 @@
                     >
                         {{ __('Notifications') }}@if ($unreadNotificationsCount) ({{ $unreadNotificationsCount }}) @endif
                     </flux:sidebar.item>
+                    <x-push-notification-button />
 
                     @if ($role === 'teacher')
                         <flux:sidebar.item icon="paper-airplane" :href="route('teacher.referrals-sent')" :current="request()->routeIs('teacher.referrals-sent')" wire:navigate>

@@ -16,6 +16,7 @@
         <form
             method="POST"
             action="{{ route('register.store') }}"
+            enctype="multipart/form-data"
             class="flex flex-col gap-6"
         >
 
@@ -58,6 +59,7 @@
                 autocomplete="email"
                 placeholder="email@example.com"
             />
+            <flux:input name="verification_photo" :label="__('Faculty verification photo (teachers only)')" type="file" accept="image/jpeg,image/png,image/webp" capture="user" />
 
             <!-- Password -->
             <flux:input
@@ -123,7 +125,7 @@
 
         <p class="text-center text-sm text-zinc-600 dark:text-zinc-400">
             Teacher?
-            <flux:link :href="route('teacher.register')">{{ __('Request a teacher account') }}</flux:link>
+            <flux:text>{{ __('Teacher requests are reviewed by the guidance counselor after you submit the registration form.') }}</flux:text>
         </p>
 
     </div>

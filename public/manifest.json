@@ -1,0 +1,17 @@
+{
+    "name": "KAJOREC",
+    "short_name": "KAJOREC",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#f6f5f1",
+    "theme_color": "#28643a",
+    "icons": [
+        {
+            "src": "/images/kajorec_logo.png",
+            "sizes": "any",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

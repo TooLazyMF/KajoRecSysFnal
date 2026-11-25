@@ -34,6 +34,21 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function validate(array $input): array
     {
+        $validated = $this->validateRegistration($input);
+        $this->validateStudentReference($validated);
+
+        return $validated;
+    }
+
+    /**
+     * Validate the shared registration fields before deciding whether the
+     * credentials belong to a student or a teacher account request.
+     *
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    public function validateRegistration(array $input): array
+    {
         $input['id_number'] = is_string($input['id_number'] ?? null)
             ? trim($input['id_number'])
             : '';
@@ -50,9 +65,27 @@ class CreateNewUser implements CreatesNewUsers
             'password_confirmation' => ['required', 'same:password'],
         ])->validate();
 
-        $this->validateStudentReference($validated);
-
         return $validated;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    public function matchesStudentReference(array $validated): bool
+    {
+        $normalizedIdNumber = StudentReference::normalizeIdNumber($validated['id_number'] ?? '');
+
+        if (! RosterImportState::isImported(RosterImportState::STUDENTS)) {
+            return false;
+        }
+
+        $reference = StudentReference::query()
+            ->where('id_number_lookup_hash', SensitiveLookup::hash('id_number', $normalizedIdNumber))
+            ->first(['id_number', 'name', 'gender']);
+
+        return $reference !== null
+            && $this->normalizeName($reference->name) === $this->normalizeName($this->registrationName($validated))
+            && $reference->gender === $validated['gender'];
     }
 
     /**

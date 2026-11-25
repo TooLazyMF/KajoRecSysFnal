@@ -1135,9 +1135,6 @@
                 @unless ($hasImportedStudentList)
                     <p class="session-status" role="status">The guidance counselor has not imported the student list yet. Student registration will be available after it is imported.</p>
                 @endunless
-                @unless ($hasImportedTeacherList)
-                    <p class="session-status" role="status">Teacher account requests require an imported teacher list and counselor approval.</p>
-                @endunless
                 @error('registration')
                     <p class="field-error" role="alert">{{ $message }}</p>
                 @enderror
@@ -1145,7 +1142,7 @@
                     <p class="session-status" role="status">{{ session('status') }}</p>
                 @endif
 
-                <form method="POST" action="{{ route('register.store') }}" class="auth-form">
+                <form method="POST" action="{{ route('register.store') }}" enctype="multipart/form-data" class="auth-form">
                     @csrf
                     <input type="hidden" name="_welcome_panel" value="register">
 
@@ -1216,6 +1213,13 @@
                                 <span class="field-error">{{ $message }}</span>
                             @enderror
                         </label>
+                        <label class="field" for="register-verification-photo">
+                            Faculty verification photo <span class="field-hint">Teachers: upload or take a photo of your ID or selfie. Students may leave this blank.</span>
+                            <input id="register-verification-photo" name="verification_photo" type="file" accept="image/jpeg,image/png,image/webp" capture="user">
+                            @error('verification_photo')
+                                <span class="field-error" role="alert">{{ $message }}</span>
+                            @enderror
+                        </label>
 
                         <div class="field">
                             <label for="register-password">Password</label>
@@ -1283,7 +1287,7 @@
                 </p>
                 <p class="switch-copy">
                     Teacher?
-                    <a class="text-button" href="{{ route('teacher.register') }}">Request a teacher account</a>
+                    <span class="switch-copy">Teacher requests are reviewed by the guidance counselor after you submit the form.</span>
                 </p>
             </div>
 

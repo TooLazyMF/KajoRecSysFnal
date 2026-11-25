@@ -288,28 +288,6 @@
                         <p class="mt-3 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                     @enderror
                 </section>
-                <section id="teacher-import" class="scroll-mt-6 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
-                    <div>
-                        <p class="text-xs font-bold uppercase tracking-wide text-blue-700 dark:text-blue-400">Registration reference</p>
-                        <h2 class="mt-1 text-lg font-semibold">{{ $hasImportedTeacherFile ? 'Update the imported file' : 'Import teacher names file' }}</h2>
-                        <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-                            Upload the complete Excel or CSV file with one teacher name per row. Teacher requests must use a listed name and include an ID photo for counselor review. Replacing the list does not deactivate existing accounts.
-                        </p>
-                    </div>
-                    <form method="POST" action="{{ route('admin.teachers.import') }}" enctype="multipart/form-data" class="mt-5 space-y-4">
-                        @csrf
-                        <label class="block text-sm font-medium text-neutral-700 dark:text-neutral-200">
-                            Teacher names file
-                            <input type="file" name="teacher_file" accept=".xlsx,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain" required class="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-600 dark:bg-neutral-800">
-                        </label>
-                        <button type="submit" class="w-full rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500">
-                            {{ $hasImportedTeacherFile ? 'Update teacher names file' : 'Import teacher names file' }}
-                        </button>
-                    </form>
-                    @error('teacher_file')
-                        <p class="mt-3 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                    @enderror
-                </section>
                 </div>
             </div>
 

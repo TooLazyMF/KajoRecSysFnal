@@ -40,6 +40,6 @@ class TeacherAccountRequestDecision extends Notification
 
         return $message
             ->line('You may submit a corrected request with an updated ID photo.')
-            ->action('Submit another request', route('teacher.register'));
+            ->action('Submit another request', route('home', ['panel' => 'register']));
     }
 }

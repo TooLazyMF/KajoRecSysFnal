@@ -10,6 +10,7 @@ use App\Models\TeacherReference;
 use App\Models\User;
 use App\Notifications\TeacherAccountRequestDecision;
 use App\Notifications\TeacherAccountRequestVerification;
+use App\Notifications\WorkflowActivity;
 use App\Rules\UniqueEncryptedLookup;
 use App\Support\SensitiveLookup;
 use Illuminate\Contracts\Encryption\DecryptException;
@@ -200,12 +201,12 @@ class TeacherAccountRequestController extends Controller
     public function verify(Request $request, TeacherAccountRequest $teacherAccountRequest): RedirectResponse
     {
         if ($teacherAccountRequest->status === TeacherAccountRequest::DECLINED) {
-            return to_route('teacher.register')
+            return to_route('home', ['panel' => 'register'])
                 ->with('status', 'This request was declined. You can submit a corrected request.');
         }
 
         if ($teacherAccountRequest->status !== TeacherAccountRequest::PENDING) {
-            return to_route('teacher.register')
+            return to_route('home', ['panel' => 'register'])
                 ->with('status', 'This teacher account request has already been processed.');
         }
 
@@ -213,7 +214,7 @@ class TeacherAccountRequestController extends Controller
             $teacherAccountRequest->forceFill(['email_verified_at' => now()])->save();
         }
 
-        return to_route('teacher.register')
+        return to_route('home', ['panel' => 'register'])
             ->with('status', 'Your email is verified. The guidance counselor can now review your request.');
     }
 
@@ -305,6 +306,7 @@ class TeacherAccountRequestController extends Controller
 
         $photoDeleted = $this->deleteIdPhoto($teacherRequest, $photoPath);
         $emailSent = $this->sendDecisionEmail($teacherRequest, true);
+        $this->notifyCounselorsOfDecision($teacherRequest, true);
 
         return to_route('admin.users.index')->with(
             'status',
@@ -350,6 +352,7 @@ class TeacherAccountRequestController extends Controller
 
         $photoDeleted = $this->deleteIdPhoto($teacherRequest, $photoPath);
         $emailSent = $this->sendDecisionEmail($teacherRequest, false);
+        $this->notifyCounselorsOfDecision($teacherRequest, false);
 
         return to_route('admin.users.index')->with(
             'status',
@@ -386,6 +389,21 @@ class TeacherAccountRequestController extends Controller
         }
 
         return true;
+    }
+
+    private function notifyCounselorsOfDecision(TeacherAccountRequest $teacherRequest, bool $approved): void
+    {
+        $decision = $approved ? 'approved' : 'declined';
+
+        foreach (User::query()->where('role', 'guidance_counselor')->get() as $counselor) {
+            $counselor->notify(new WorkflowActivity(
+                'Teacher account request '.$decision,
+                'The teacher account request from '.$teacherRequest->name.' was '.$decision.'.',
+                route('admin.users.index'),
+                'teacher-account-request-'.$decision,
+                $teacherRequest->id,
+            ));
+        }
     }
 
     private function deleteIdPhoto(TeacherAccountRequest $teacherRequest, ?string $photoPath): bool

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Fortify\CreateNewUser;
+use App\Services\TeacherAccountRequestService;
 use App\Services\PendingRegistrationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,8 +16,21 @@ class RegistrationController extends Controller
         Request $request,
         CreateNewUser $createNewUser,
         PendingRegistrationService $pendingRegistration,
+        TeacherAccountRequestService $teacherAccountRequests,
     ): RedirectResponse {
-        $validated = $createNewUser->validate($request->all());
+        $validated = $createNewUser->validateRegistration($request->all());
+
+        if (! $createNewUser->matchesStudentReference($validated)) {
+            $request->validate([
+                'verification_photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            ]);
+
+            $teacherAccountRequests->createFromRegistration($validated, $request->file('verification_photo'));
+
+            return to_route('home', ['panel' => 'register'])
+                ->with('status', 'Your teacher account request was submitted. Verify your email from the link we sent so the guidance counselor can review it.');
+        }
+
         try {
             $pendingRegistration->begin($request, $validated);
         } catch (TransportExceptionInterface $exception) {

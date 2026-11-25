@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Notifications\Channels\WebPushChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -23,7 +24,13 @@ class WorkflowActivity extends Notification
      */
     public function via(object $notifiable): array
     {
-        return filled($notifiable->email) ? ['database', 'mail'] : ['database'];
+        return array_values(array_filter([
+            'database',
+            filled($notifiable->email) ? 'mail' : null,
+            filled(config('webpush.vapid.public_key')) && filled(config('webpush.vapid.private_key'))
+                ? WebPushChannel::class
+                : null,
+        ]));
     }
 
     /**
@@ -37,6 +44,20 @@ class WorkflowActivity extends Notification
             'url' => $this->url,
             'activity_type' => $this->activityType,
             'activity_id' => $this->activityId,
+        ];
+    }
+
+    /**
+     * @return array{title: string, body: string, icon: string, url: string, tag: string}
+     */
+    public function toPush(object $notifiable): array
+    {
+        return [
+            'title' => $this->title,
+            'body' => $this->message,
+            'icon' => '/images/kajorec_logo.png',
+            'url' => $this->url,
+            'tag' => $this->activityType,
         ];
     }
 
