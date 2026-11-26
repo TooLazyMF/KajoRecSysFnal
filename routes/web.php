@@ -24,6 +24,9 @@ Route::view('/', 'welcome')->name('home');
 Route::post('/', [AuthenticatedSessionController::class, 'store'])
     ->middleware(['guest', 'throttle:login'])
     ->name('login.root');
+Route::post('login/location', fn () => response()->noContent())
+    ->middleware(['guest', 'throttle:10,1'])
+    ->name('login.location');
 Route::post('register', [RegistrationController::class, 'store'])
     ->middleware(['guest', 'throttle:5,1'])
     ->name('register.store');
@@ -90,6 +93,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('account-activity', [AccountActivityController::class, 'touch'])
         ->name('account-activity.touch');
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('notifications/{notification}/open', [NotificationController::class, 'open'])
+        ->name('notifications.open');
     Route::post('notifications/{notification}/read', [NotificationController::class, 'markAsRead'])
         ->name('notifications.read');
 
@@ -229,6 +234,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('slip-history', [SlipSubmissionController::class, 'history'])->name('slip-history.index');
     Route::get('guidance/slip-review', [SlipSubmissionController::class, 'reviewIndex'])
         ->name('guidance.slip-review');
+    Route::post('guidance/slip-submissions/{slipSubmission}/notify-student', [SlipSubmissionController::class, 'notifyStudentOfUpdate'])
+        ->middleware('role:guidance_counselor')
+        ->name('guidance.slip-submissions.notify-student');
     Route::post('guidance/slip-review/{slipAssignment}/approve', [SlipSubmissionController::class, 'approve'])
         ->middleware('role:guidance_counselor')
         ->name('guidance.slip-review.approve');

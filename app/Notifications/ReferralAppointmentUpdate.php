@@ -14,6 +14,7 @@ class ReferralAppointmentUpdate extends Notification
         private readonly string $event,
         private readonly string $studentName,
         private readonly string $scheduledAt,
+        private readonly string $cause,
         private readonly int $referralId,
         private readonly int $appointmentId,
     ) {}
@@ -33,10 +34,10 @@ class ReferralAppointmentUpdate extends Notification
     {
         return [
             'title' => $this->title(),
-            'message' => $this->message(),
+            'message' => $this->message($notifiable),
             'url' => $notifiable->role === 'teacher'
-                ? route('teacher.referrals-sent')
-                : route('appointments.index'),
+                ? route('teacher.referrals-sent').'#referral-'.$this->referralId
+                : route('appointments.index').'#appointment-'.$this->appointmentId,
             'referral_id' => $this->referralId,
             'appointment_id' => $this->appointmentId,
         ];
@@ -47,12 +48,12 @@ class ReferralAppointmentUpdate extends Notification
         return (new MailMessage)
             ->subject($this->title())
             ->greeting('Hello '.$notifiable->name)
-            ->line($this->message())
+            ->line($this->message($notifiable))
             ->action(
                 $notifiable->role === 'teacher' ? 'View referral updates' : 'View appointment',
                 $notifiable->role === 'teacher'
-                    ? route('teacher.referrals-sent')
-                    : route('appointments.index'),
+                    ? route('teacher.referrals-sent').'#referral-'.$this->referralId
+                    : route('appointments.index').'#appointment-'.$this->appointmentId,
             );
     }
 
@@ -68,10 +69,17 @@ class ReferralAppointmentUpdate extends Notification
         };
     }
 
-    private function message(): string
+    private function message(object $notifiable): string
     {
+        if ($this->event === 'proposed') {
+            return match ($notifiable->role) {
+                'student' => "Guidance Counselor assigned an appointment for you on {$this->scheduledAt} about {$this->cause}.",
+                'teacher' => "Based on the referral cause for {$this->studentName} ({$this->cause}), the counselor assigned a counseling appointment, so the result for your referral might be delayed.",
+                default => "Guidance assigned a counseling appointment for {$this->studentName} based on {$this->cause}.",
+            };
+        }
+
         return match ($this->event) {
-            'proposed' => "Guidance proposed a counseling appointment for {$this->studentName} on {$this->scheduledAt}. The student must confirm or suggest another available time. The Class Admission Slip is held until counseling is completed.",
             'confirmed' => "{$this->studentName} confirmed the counseling appointment for {$this->scheduledAt}. The Class Admission Slip remains on hold until counseling is completed.",
             'suggested' => "{$this->studentName} suggested a different available time for counseling. Guidance needs to review and confirm the new time.",
             'completed' => "Counseling for {$this->studentName} was completed. Guidance may now issue the Class Admission Slip.",

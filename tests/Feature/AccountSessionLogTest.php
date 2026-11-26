@@ -5,15 +5,24 @@ namespace Tests\Feature;
 use App\Models\AccountSessionLog;
 use App\Models\User;
 use App\Services\AccountSessionLogger;
+use App\Support\SensitiveLookup;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class AccountSessionLogTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_successful_login_and_logout_are_recorded_with_optional_browser_location(): void
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['session.driver' => 'database']);
+    }
+
+    public function test_successful_login_and_logout_are_recorded_with_required_browser_location(): void
     {
         $student = User::factory()->create(['role' => 'student']);
 
@@ -32,13 +41,17 @@ class AccountSessionLogTest extends TestCase
         $this->assertSame('14.5995', $log->latitude);
         $this->assertSame('120.9842', $log->longitude);
         $this->assertNull($log->logged_out_at);
+        $this->assertDatabaseHas('sessions', [
+            'id' => $log->session_hash,
+            'user_id' => $student->id,
+        ]);
 
         $this->post(route('logout'))->assertRedirect('/');
         $this->assertNotNull($log->fresh()->logged_out_at);
         $this->assertGuest();
     }
 
-    public function test_login_location_is_not_saved_without_explicit_consent(): void
+    public function test_login_requires_location_consent_and_valid_coordinates(): void
     {
         $student = User::factory()->create(['role' => 'student']);
 
@@ -47,11 +60,113 @@ class AccountSessionLogTest extends TestCase
             'password' => 'password',
             'login_latitude' => '14.5995',
             'login_longitude' => '120.9842',
-        ])->assertSessionHasNoErrors();
+        ])->assertSessionHasErrors('share_location');
+
+        $this->post(route('login.store'), [
+            'email' => $student->email,
+            'password' => 'password',
+            'share_location' => '1',
+        ])->assertSessionHasErrors('share_location');
+
+        $this->assertGuest();
+        $this->assertDatabaseMissing('account_session_logs', ['user_id' => $student->id]);
+    }
+
+    public function test_landing_page_login_also_records_the_required_location(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+
+        $this->post(route('login.root'), [
+            'email' => $student->email,
+            'password' => 'password',
+            'share_location' => '1',
+            'login_latitude' => '14.5995',
+            'login_longitude' => '120.9842',
+        ])->assertRedirect(route('student.dashboard', absolute: false));
 
         $log = AccountSessionLog::query()->where('user_id', $student->id)->sole();
-        $this->assertNull($log->latitude);
-        $this->assertNull($log->longitude);
+        $this->assertSame('14.5995', $log->latitude);
+        $this->assertSame('120.9842', $log->longitude);
+    }
+
+    public function test_user_can_end_another_active_device_session(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        $this->actingAs($student)->get(route('account-logs.index'))->assertOk();
+
+        $remoteSessionHash = SensitiveLookup::hash('session_id', 'remote-device-session')
+            ?? throw new \LogicException('A session ID hash could not be generated.');
+        DB::table('sessions')->insert([
+            'id' => $remoteSessionHash,
+            'user_id' => $student->id,
+            'payload' => 'encrypted-session-payload',
+            'last_activity' => now()->timestamp,
+        ]);
+        $remoteLog = $student->accountSessionLogs()->create([
+            'session_hash' => $remoteSessionHash,
+            'device_name' => 'Firefox on Linux',
+            'logged_in_at' => now()->subHour(),
+            'last_activity_at' => now(),
+        ]);
+
+        $this->get(route('account-logs.index'))
+            ->assertOk()
+            ->assertSee('Log out this device');
+
+        $this->post(route('account-logs.logout-device', $remoteLog))
+            ->assertRedirect(route('account-logs.index'))
+            ->assertSessionHas('status', 'The selected device was logged out.');
+
+        $this->assertDatabaseMissing('sessions', ['id' => $remoteSessionHash]);
+        $this->assertNotNull($remoteLog->fresh()->logged_out_at);
+
+        $this->withSession(['account_session_log_id' => $remoteLog->id])
+            ->actingAs($student)
+            ->get(route('student.dashboard'))
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('status', 'This device was logged out from your account.');
+        $this->assertGuest();
+    }
+
+    public function test_user_can_log_out_the_current_device_from_account_logs(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        $this->actingAs($student)->get(route('account-logs.index'))->assertOk();
+        $log = AccountSessionLog::query()->where('user_id', $student->id)->sole();
+
+        $this->post(route('account-logs.logout-device', $log))
+            ->assertRedirect('/')
+            ->assertSessionHas('status', 'This device was logged out.');
+
+        $this->assertGuest();
+        $this->assertNotNull($log->fresh()->logged_out_at);
+    }
+
+    public function test_user_cannot_log_out_another_users_device(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        $otherUser = User::factory()->create(['role' => 'student']);
+        $otherSessionHash = SensitiveLookup::hash('session_id', 'other-users-session')
+            ?? throw new \LogicException('A session ID hash could not be generated.');
+        DB::table('sessions')->insert([
+            'id' => $otherSessionHash,
+            'user_id' => $otherUser->id,
+            'payload' => 'encrypted-session-payload',
+            'last_activity' => now()->timestamp,
+        ]);
+        $otherLog = $otherUser->accountSessionLogs()->create([
+            'session_hash' => $otherSessionHash,
+            'device_name' => 'Firefox on Linux',
+            'logged_in_at' => now()->subHour(),
+            'last_activity_at' => now(),
+        ]);
+
+        $this->actingAs($student)
+            ->post(route('account-logs.logout-device', $otherLog))
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('sessions', ['id' => $otherSessionHash]);
+        $this->assertNull($otherLog->fresh()->logged_out_at);
     }
 
     public function test_all_account_roles_can_view_monthly_paginated_logs(): void
@@ -76,7 +191,9 @@ class AccountSessionLogTest extends TestCase
                 ->assertSee('Device Name')
                 ->assertSee('Location')
                 ->assertSee('Logged In')
+                ->assertSee('Last Activity')
                 ->assertSee('Logged Out')
+                ->assertSee('Action')
                 ->assertViewHas('logs', fn ($logs) => $logs->count() === 50 && $logs->total() >= 51);
 
             $this->get(route('account-logs.index', ['month' => now()->subMonth()->format('Y-m')]))

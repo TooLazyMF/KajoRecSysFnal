@@ -435,12 +435,6 @@
             line-height: 1.5;
         }
 
-        .location-share input {
-            flex: 0 0 auto;
-            margin-top: 3px;
-            accent-color: var(--primary);
-        }
-
         .text-button {
             padding: 0;
             border: 0;
@@ -966,7 +960,7 @@
         <main
             class="page"
             data-auth-page
-            data-mode="{{ old('_welcome_panel') === 'forgot' || request()->query('panel') === 'forgot' || session()->has('password_reset_email') ? 'forgot' : (old('_welcome_panel') === 'register' || request()->query('panel') === 'register' || session('registration_panel') || session('registration_cancelled') || session()->has(\App\Services\PendingRegistrationService::SESSION_KEY) ? 'register' : (old('_welcome_panel') === 'login' || request()->query('panel') === 'login' || $errors->any() || session('status') ? 'login' : 'welcome')) }}"
+            data-mode="{{ old('_welcome_panel') === 'forgot' || request()->query('panel') === 'forgot' || session()->has('password_reset_email') ? 'forgot' : (old('_welcome_panel') === 'register' || request()->query('panel') === 'register' || session('registration_panel') || session('registration_cancelled') || session('show_teacher_verification_modal') || session()->has(\App\Services\PendingRegistrationService::SESSION_KEY) ? 'register' : (old('_welcome_panel') === 'login' || request()->query('panel') === 'login' || $errors->any() || session('status') ? 'login' : 'welcome')) }}"
         >
             <section class="form-panel" aria-labelledby="form-heading">
             <div class="brand" aria-label="KAJOREC Guidance Office">
@@ -974,7 +968,7 @@
                 KAJOREC
             </div>
 
-            <div data-auth-view="login" @if (old('_welcome_panel') === 'register' || old('_welcome_panel') === 'forgot' || request()->query('panel') === 'register' || request()->query('panel') === 'forgot') hidden inert @endif>
+            <div data-auth-view="login" @if (old('_welcome_panel') === 'register' || old('_welcome_panel') === 'forgot' || request()->query('panel') === 'register' || request()->query('panel') === 'forgot' || session('show_teacher_verification_modal')) hidden inert @endif>
                 <h1 class="form-heading" id="form-heading" tabindex="-1">Welcome to KAJOREC</h1>
                 <p class="form-intro">Enter your details to sign in to your KAJOREC account.</p>
 
@@ -987,18 +981,19 @@
                 <form id="landing-login-form" method="POST" action="{{ route('login.root') }}" class="auth-form">
                     @csrf
                     <input type="hidden" name="_welcome_panel" value="login">
+                    <input type="hidden" name="share_location" value="1">
                     <input type="hidden" name="login_latitude" id="login-latitude">
                     <input type="hidden" name="login_longitude" id="login-longitude">
 
                     <div class="form-fields">
                         <label class="field" for="login-email">
-                            Email address or account name
+                            Email
                             <input
                                 id="login-email"
                                 name="email"
                                 type="text"
                                 value="{{ old('email') }}"
-                                placeholder="Email address or account name"
+                                placeholder="Email"
                                 autocomplete="username"
                                 required
                                 autofocus
@@ -1043,10 +1038,13 @@
                             @endif
                         </div>
 
-                        <label class="location-share">
-                            <input id="share-login-location" name="share_location" type="checkbox" value="1" @checked(old('share_location'))>
-                            <span>Share this device’s location in my account logs. Your browser will ask permission; coordinates stay in this system and are never sent to a location provider.</span>
-                        </label>
+                        <p class="location-share">Location permission is required to sign in and record this device. Your browser will ask permission; coordinates stay in this system and are never sent to a location provider.</p>
+                        <p data-location-error role="alert" class="field-error" hidden>
+                            Location access is required to sign in. Allow location access in your browser and try again.
+                        </p>
+                        @error('share_location')
+                            <span class="field-error" role="alert">{{ $message }}</span>
+                        @enderror
 
                         <button class="submit-button" type="submit" data-loading-button data-loading-label="Signing in...">
                             <span data-button-label>Sign in</span>
@@ -1128,13 +1126,10 @@
                 </p>
             </div>
 
-            <div data-auth-view="register" @if (old('_welcome_panel') !== 'register' && request()->query('panel') !== 'register') hidden inert @endif>
+            <div data-auth-view="register" @if (old('_welcome_panel') !== 'register' && request()->query('panel') !== 'register' && ! session('show_teacher_verification_modal')) hidden inert @endif>
                 <h1 class="form-heading" tabindex="-1">Create your account</h1>
                 <p class="form-intro">A few details and you’ll be ready to get started.</p>
                 <p class="form-intro">Use an email address you can access. We will send a verification code; verify it to use your account.</p>
-                @unless ($hasImportedStudentList)
-                    <p class="session-status" role="status">The guidance counselor has not imported the student list yet. Student registration will be available after it is imported.</p>
-                @endunless
                 @error('registration')
                     <p class="field-error" role="alert">{{ $message }}</p>
                 @enderror
@@ -1145,6 +1140,7 @@
                 <form method="POST" action="{{ route('register.store') }}" enctype="multipart/form-data" class="auth-form">
                     @csrf
                     <input type="hidden" name="_welcome_panel" value="register">
+                    <input type="hidden" name="teacher_request_confirmation" value="0" data-teacher-request-confirmation>
 
                     <div class="form-fields">
                         <div class="name-fields">
@@ -1213,14 +1209,6 @@
                                 <span class="field-error">{{ $message }}</span>
                             @enderror
                         </label>
-                        <label class="field" for="register-verification-photo">
-                            Faculty verification photo <span class="field-hint">Teachers: upload or take a photo of your ID or selfie. Students may leave this blank.</span>
-                            <input id="register-verification-photo" name="verification_photo" type="file" accept="image/jpeg,image/png,image/webp" capture="user">
-                            @error('verification_photo')
-                                <span class="field-error" role="alert">{{ $message }}</span>
-                            @enderror
-                        </label>
-
                         <div class="field">
                             <label for="register-password">Password</label>
                             <div class="password-input-wrap">
@@ -1279,6 +1267,43 @@
                         </button>
                         <span class="loading-status" data-submit-status role="status" aria-live="polite" hidden></span>
                     </div>
+
+                    @if (session('show_teacher_verification_modal'))
+                        <dialog
+                            class="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[min(32rem,calc(100%-2rem))] overflow-y-auto rounded-2xl border border-neutral-200 bg-white p-0 text-neutral-900 shadow-2xl backdrop:bg-black/50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-zinc-100"
+                            aria-labelledby="teacher-verification-heading"
+                            aria-describedby="teacher-verification-description"
+                            data-teacher-verification-modal
+                        >
+                            <div class="space-y-5 p-6">
+                                <div class="space-y-2">
+                                    <h2 id="teacher-verification-heading" class="text-xl font-semibold">Faculty verification required</h2>
+                                    <p id="teacher-verification-description" class="text-sm text-neutral-600 dark:text-neutral-300">
+                                        We could not match your information with the imported student list. If you are a faculty member, submit a photo of your faculty ID or a selfie for counselor review.
+                                    </p>
+                                </div>
+
+                                <label class="field" for="register-verification-photo">
+                                    Faculty verification photo
+                                    <input id="register-verification-photo" name="verification_photo" type="file" accept="image/jpeg,image/png,image/webp" capture="user" required>
+                                </label>
+                                <p class="text-xs text-neutral-500 dark:text-neutral-400">JPG, PNG, or WebP up to 5 MB. The image is used only for counselor review.</p>
+
+                                @error('verification_photo')
+                                    <p class="field-error" role="alert">{{ $message }}</p>
+                                @enderror
+
+                                <div class="flex justify-end gap-3">
+                                    <button type="button" class="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800" data-close-teacher-modal>
+                                        Cancel
+                                    </button>
+                                    <button type="submit" class="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800" data-confirm-teacher-request>
+                                        Submit for review
+                                    </button>
+                                </div>
+                            </div>
+                        </dialog>
+                    @endif
                 </form>
 
                 <p class="switch-copy">
@@ -1413,7 +1438,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('verification.otp.verify') }}" class="mt-5 flex flex-col gap-4">
+            <form id="registration-verification-form" method="POST" action="{{ route('verification.otp.verify') }}" class="mt-5 flex flex-col gap-4">
                 @csrf
                 <label class="field" for="registration-verification-otp">
                     6-digit code
@@ -1429,7 +1454,17 @@
                         required
                     >
                 </label>
-                <button type="submit" class="submit-button">Verify email</button>
+                <input type="hidden" name="login_latitude" id="registration-login-latitude">
+                <input type="hidden" name="login_longitude" id="registration-login-longitude">
+                <label class="location-share">
+                    <input id="registration-share-location" name="share_location" type="checkbox" value="1" required @checked(old('share_location'))>
+                    <span>Location sharing is required to activate your account and record this device. Your browser will ask permission; coordinates stay in this system.</span>
+                </label>
+                <p data-registration-location-error role="alert" class="field-error" hidden>
+                    Location access is required to activate your account. Allow location access in your browser and try again.
+                </p>
+                <button type="submit" class="submit-button" data-registration-loading-button>Verify email</button>
+                <span data-registration-submit-status class="loading-status" role="status" aria-live="polite" hidden></span>
             </form>
 
             <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -1447,12 +1482,39 @@
         </dialog>
     @endif
 
+    @unless ($hasImportedStudentList)
+        <dialog
+            id="student-registration-unavailable-modal"
+            class="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[min(28rem,calc(100%-2rem))] overflow-y-auto rounded-2xl border border-neutral-200 bg-white p-0 text-neutral-900 shadow-2xl backdrop:bg-black/50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+            aria-labelledby="student-registration-unavailable-heading"
+            aria-describedby="student-registration-unavailable-description"
+        >
+            <div class="space-y-5 p-6">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">Registration unavailable</p>
+                    <h2 id="student-registration-unavailable-heading" class="mt-2 text-xl font-semibold">Student registration is not available yet</h2>
+                    <p id="student-registration-unavailable-description" class="mt-3 text-sm text-neutral-600 dark:text-neutral-300">
+                        The guidance counselor has not imported the student list yet. Student registration will be available after it is imported.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    data-return-to-login
+                    class="inline-flex w-full items-center justify-center rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                >
+                    Return to sign in
+                </button>
+            </div>
+        </dialog>
+    @endunless
+
     <script>
         const authPage = document.querySelector('[data-auth-page]');
         const authViews = authPage.querySelectorAll('[data-auth-view]');
         const welcomeContent = authPage.querySelector('[data-welcome-content]');
         const contactContent = authPage.querySelector('[data-contact-content]');
         const aboutContent = authPage.querySelector('[data-about-content]');
+        const registrationUnavailableModal = document.getElementById('student-registration-unavailable-modal');
 
         function showAuthView(viewName, moveFocus = true) {
             authPage.dataset.mode = viewName;
@@ -1472,6 +1534,23 @@
             if (moveFocus) {
                 authPage.querySelector(`[data-auth-view="${viewName}"] h1`).focus();
             }
+
+            if (viewName === 'register' && registrationUnavailableModal && !registrationUnavailableModal.open) {
+                registrationUnavailableModal.showModal();
+            }
+        }
+
+        if (registrationUnavailableModal) {
+            const returnToLogin = () => {
+                registrationUnavailableModal.close();
+                showAuthView('login');
+            };
+
+            registrationUnavailableModal.querySelector('[data-return-to-login]').addEventListener('click', returnToLogin);
+            registrationUnavailableModal.addEventListener('cancel', (event) => {
+                event.preventDefault();
+                returnToLogin();
+            });
         }
 
         function showWelcomeView() {
@@ -1541,6 +1620,10 @@
         });
 
         authPage.querySelector('[data-auth-view="register"] form').addEventListener('submit', (event) => {
+            if (event.currentTarget.querySelector('[data-teacher-request-confirmation]')?.value === '1') {
+                return;
+            }
+
             const confirmed = window.confirm('Please confirm that all the information you entered is correct before creating your account.');
 
             if (!confirmed) {
@@ -1552,27 +1635,37 @@
         });
 
         const loginForm = authPage.querySelector('#landing-login-form');
-        const shareLocation = loginForm.querySelector('#share-login-location');
         let locationSubmissionStarted = false;
         let loginSubmitted = false;
 
         loginForm.addEventListener('submit', (event) => {
-            showFormLoading(loginForm);
-
-            if (!shareLocation.checked || locationSubmissionStarted) {
+            if (locationSubmissionStarted) {
+                event.preventDefault();
                 return;
             }
 
             event.preventDefault();
             locationSubmissionStarted = true;
+            const button = loginForm.querySelector('[data-loading-button]');
+            const status = loginForm.querySelector('[data-submit-status]');
+            const locationError = loginForm.querySelector('[data-location-error]');
+            const label = button.querySelector('[data-button-label]');
+            locationError.hidden = true;
+            button.disabled = true;
+            button.setAttribute('aria-busy', 'true');
+            label.textContent = 'Getting location...';
+            button.querySelector('[data-loading-spinner]').hidden = false;
+            status.textContent = 'Getting device location...';
+            status.hidden = false;
 
             const submitLogin = () => {
-                // Permission callbacks and the timeout can race; submit credentials only once.
                 if (loginSubmitted) {
                     return;
                 }
 
                 loginSubmitted = true;
+                label.textContent = button.dataset.loadingLabel;
+                status.textContent = button.dataset.loadingLabel;
                 HTMLFormElement.prototype.submit.call(loginForm);
             };
             const submitWithLocation = (position) => {
@@ -1580,19 +1673,26 @@
                 document.getElementById('login-longitude').value = position.coords.longitude;
                 submitLogin();
             };
+            const locationFailed = () => {
+                locationSubmissionStarted = false;
+                button.disabled = false;
+                button.removeAttribute('aria-busy');
+                label.textContent = 'Sign in';
+                button.querySelector('[data-loading-spinner]').hidden = true;
+                status.hidden = true;
+                locationError.hidden = false;
+            };
 
-            // Location is optional; denied or unavailable access must not block sign-in.
             if (!navigator.geolocation) {
-                submitLogin();
+                locationFailed();
                 return;
             }
 
-            navigator.geolocation.getCurrentPosition(submitWithLocation, submitLogin, {
+            navigator.geolocation.getCurrentPosition(submitWithLocation, locationFailed, {
                 enableHighAccuracy: false,
                 maximumAge: 60000,
                 timeout: 5000,
             });
-            window.setTimeout(submitLogin, 5500);
         });
 
         function showFormLoading(form) {
@@ -1622,12 +1722,93 @@
             }
         });
 
+        const teacherVerificationModal = authPage.querySelector('[data-teacher-verification-modal]');
+        const teacherRequestConfirmation = authPage.querySelector('[data-teacher-request-confirmation]');
+
+        if (teacherVerificationModal && teacherRequestConfirmation) {
+            teacherVerificationModal.showModal();
+
+            const closeTeacherVerificationModal = () => {
+                teacherVerificationModal.close();
+                teacherRequestConfirmation.value = '0';
+            };
+
+            teacherVerificationModal.addEventListener('cancel', (event) => {
+                event.preventDefault();
+                closeTeacherVerificationModal();
+            });
+            teacherVerificationModal.querySelector('[data-close-teacher-modal]')?.addEventListener('click', closeTeacherVerificationModal);
+            teacherVerificationModal.querySelector('[data-confirm-teacher-request]')?.addEventListener('click', () => {
+                teacherRequestConfirmation.value = '1';
+            });
+        }
+
         const verificationModal = document.getElementById('registration-verification-modal');
         if (verificationModal) {
             verificationModal.addEventListener('cancel', (event) => event.preventDefault());
             verificationModal.showModal();
             verificationModal.querySelector('input[name="otp"]').focus();
         }
+
+        const registrationVerificationForm = document.getElementById('registration-verification-form');
+        const registrationShareLocation = document.getElementById('registration-share-location');
+        let registrationLocationSubmissionStarted = false;
+        let registrationVerificationSubmitted = false;
+
+        registrationVerificationForm?.addEventListener('submit', (event) => {
+            if (registrationLocationSubmissionStarted) {
+                event.preventDefault();
+                return;
+            }
+
+            if (!registrationShareLocation?.checked) {
+                return;
+            }
+
+            event.preventDefault();
+            registrationLocationSubmissionStarted = true;
+            const button = registrationVerificationForm.querySelector('[data-registration-loading-button]');
+            const status = registrationVerificationForm.querySelector('[data-registration-submit-status]');
+            const locationError = registrationVerificationForm.querySelector('[data-registration-location-error]');
+            button.disabled = true;
+            button.textContent = 'Getting location...';
+            status.textContent = 'Getting device location...';
+            status.hidden = false;
+            locationError.hidden = true;
+
+            const submitVerification = () => {
+                if (registrationVerificationSubmitted) {
+                    return;
+                }
+
+                registrationVerificationSubmitted = true;
+                button.textContent = 'Verifying email...';
+                status.textContent = 'Verifying email...';
+                HTMLFormElement.prototype.submit.call(registrationVerificationForm);
+            };
+            const locationFailed = () => {
+                registrationLocationSubmissionStarted = false;
+                button.disabled = false;
+                button.textContent = 'Verify email';
+                status.hidden = true;
+                locationError.hidden = false;
+            };
+
+            if (!navigator.geolocation) {
+                locationFailed();
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition((position) => {
+                document.getElementById('registration-login-latitude').value = position.coords.latitude;
+                document.getElementById('registration-login-longitude').value = position.coords.longitude;
+                submitVerification();
+            }, locationFailed, {
+                enableHighAccuracy: false,
+                maximumAge: 60000,
+                timeout: 5000,
+            });
+        });
 
         const mailTransportAlert = document.querySelector('[data-mail-transport-alert]');
         const dismissMailAlert = mailTransportAlert?.querySelector('[data-dismiss-mail-alert]');

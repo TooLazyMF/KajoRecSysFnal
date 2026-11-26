@@ -8,6 +8,8 @@ use App\Models\TeacherReference;
 use App\Models\User;
 use App\Notifications\TeacherAccountRequestDecision;
 use App\Notifications\TeacherAccountRequestVerification;
+use App\Notifications\WorkflowActivity;
+use App\Services\TeacherAccountRequestService;
 use App\Support\SensitiveLookup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -26,6 +28,7 @@ class TeacherAccountRequestTest extends TestCase
         Notification::fake();
         Storage::fake('local');
         $this->importTeacher('A. Teacher');
+        $counselor = User::factory()->create(['role' => 'guidance_counselor']);
 
         $this->submitRequest();
 
@@ -38,12 +41,19 @@ class TeacherAccountRequestTest extends TestCase
         ]);
         Notification::assertSentOnDemand(TeacherAccountRequestVerification::class);
 
-        $counselor = User::factory()->create(['role' => 'guidance_counselor']);
         $this->actingAs($counselor)
             ->get(route('admin.users.index'))
             ->assertOk()
             ->assertSee('Awaiting email verification')
             ->assertDontSee(route('admin.teacher-requests.photo', $teacherRequest));
+        Notification::assertSentTo(
+            $counselor,
+            WorkflowActivity::class,
+            fn (WorkflowActivity $notification): bool => $notification->toDatabase($counselor)['message']
+                === 'Teacher A. Teacher is requesting approval to open an account.'
+                && $notification->toDatabase($counselor)['url']
+                    === route('admin.users.index').'#teacher-account-request-'.$teacherRequest->id,
+        );
 
         $this->actingAs($counselor)
             ->post(route('admin.teacher-requests.approve', $teacherRequest))
@@ -94,6 +104,9 @@ class TeacherAccountRequestTest extends TestCase
         $this->post(route('login.store'), [
             'email' => 'a.teacher@example.com',
             'password' => 'TeacherPassword123',
+            'share_location' => '1',
+            'login_latitude' => '14.5995',
+            'login_longitude' => '120.9842',
         ])->assertRedirect(route('teacher.dashboard'));
         $this->assertAuthenticatedAs($teacher);
     }
@@ -161,6 +174,32 @@ class TeacherAccountRequestTest extends TestCase
             'email_lookup_hash' => SensitiveLookup::hash('email', 'invalid-id@example.com'),
         ]);
         Notification::assertNothingSent();
+    }
+
+    public function test_counselors_receive_teacher_account_request_details(): void
+    {
+        Notification::fake();
+        Storage::fake('local');
+        $counselor = User::factory()->create(['role' => 'guidance_counselor']);
+
+        $teacherRequest = app(TeacherAccountRequestService::class)->createFromRegistration([
+            'first_name' => 'Taylor',
+            'middle_initial' => null,
+            'last_name' => 'Teacher',
+            'name_extension' => null,
+            'email' => 'taylor.teacher@example.com',
+            'id_number' => '12345',
+            'password' => 'TeacherPassword123',
+        ], $this->fakeIdPhoto());
+
+        Notification::assertSentTo(
+            $counselor,
+            WorkflowActivity::class,
+            fn (WorkflowActivity $notification): bool => $notification->toDatabase($counselor)['message']
+                === 'Teacher Taylor Teacher is requesting approval to open an account.'
+                && $notification->toDatabase($counselor)['url']
+                    === route('admin.users.index').'#teacher-account-request-'.$teacherRequest->id,
+        );
     }
 
     private function importTeacher(string $name): void

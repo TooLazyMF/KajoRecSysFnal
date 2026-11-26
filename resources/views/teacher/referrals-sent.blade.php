@@ -7,7 +7,7 @@
                 @forelse ($referrals as $referral)
                     @php($admission = $referral->followups->firstWhere('slip', 'class-admission-slip'))
                     @php($appointment = $referral->appointments->first(fn ($item) => !in_array($item->status, ['done', 'missed'], true)))
-                    <article class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                    <article id="referral-{{ $referral->id }}" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                         @if ($appointment && $admission?->status !== 'approved')
                             <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-200">Guidance issued a counseling session for this student. The Class Admission result is pending until counseling is completed.</div>
                         @endif

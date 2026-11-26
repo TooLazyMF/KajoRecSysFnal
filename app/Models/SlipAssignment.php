@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'approved_at',
     'teacher_acknowledged_at',
     'student_sent_to_teacher_at',
+    'counselor_viewed_at',
 ])]
 class SlipAssignment extends Model
 {
@@ -35,6 +36,7 @@ class SlipAssignment extends Model
             'approved_at' => 'datetime',
             'teacher_acknowledged_at' => 'datetime',
             'student_sent_to_teacher_at' => 'datetime',
+            'counselor_viewed_at' => 'datetime',
         ];
     }
 

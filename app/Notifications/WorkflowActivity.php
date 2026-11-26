@@ -56,7 +56,9 @@ class WorkflowActivity extends Notification
             'title' => $this->title,
             'body' => $this->message,
             'icon' => '/images/kajorec_logo.png',
-            'url' => $this->url,
+            'url' => filled($this->id)
+                ? route('notifications.open', $this->id)
+                : $this->url,
             'tag' => $this->activityType,
         ];
     }

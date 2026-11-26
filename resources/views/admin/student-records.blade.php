@@ -77,7 +77,7 @@
                                     <td class="px-5 py-4 text-neutral-600 dark:text-neutral-300">{{ $student->is_active && ! $student->is_graduated ? 'Active' : 'Archived' }}</td>
                                     <td class="px-5 py-4">
                                         <div class="flex flex-wrap gap-2">
-                                            <button type="button" data-cif-modal="student-cif-modal-{{ $student->id }}" class="rounded-lg border border-blue-300 px-3 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-200 dark:hover:bg-blue-950/40">CIF</button>
+                                            <button type="button" data-cif-modal="student-cif-modal-{{ $student->id }}" class="rounded-lg border border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-200 dark:hover:bg-emerald-950/40">CIF</button>
                                             <button type="button" data-appointments="{{ json_encode($appointments->all(), JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_HEX_TAG) }}" data-student-name="{{ $student->name }}" class="rounded-lg border border-sky-300 px-3 py-2 text-sm font-semibold text-sky-800 hover:bg-sky-50 dark:border-sky-800 dark:text-sky-200 dark:hover:bg-sky-950/40">Appointment</button>
                                             <button type="button" data-slip-records="{{ json_encode($slipRecords->all(), JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_HEX_TAG) }}" data-student-name="{{ $student->name }}" class="rounded-lg border border-purple-300 px-3 py-2 text-sm font-semibold text-purple-800 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-200 dark:hover:bg-purple-950/40">Referrals and Class admission</button>
                                         </div>
@@ -98,7 +98,7 @@
                 $cifData = $cifSubmission?->data?->getArrayCopy() ?? [];
                 $appointments = $student->appointments;
             @endphp
-            <dialog id="student-cif-modal-{{ $student->id }}" class="h-[90vh] w-[min(72rem,calc(100%-2rem))] max-w-none rounded-2xl border border-neutral-200 bg-white p-0 shadow-2xl backdrop:bg-black/50 dark:border-neutral-700 dark:bg-neutral-900">
+            <dialog id="student-cif-modal-{{ $student->id }}" class="h-[90vh] w-[min(72rem,calc(100%-2rem))] max-w-none rounded-2xl border border-neutral-200 bg-white p-0 text-neutral-900 shadow-2xl backdrop:bg-black/50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100">
                 <div class="flex h-full flex-col">
                     <div class="flex items-center justify-between gap-4 border-b border-neutral-200 px-5 py-4 dark:border-neutral-700">
                         <div>
@@ -117,8 +117,8 @@
                         <p class="m-6 rounded-xl border border-amber-200 bg-amber-50 p-5 text-base text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">No filled Client Information Form is available for this student yet.</p>
                     @else
                         <nav class="flex gap-2 border-b border-neutral-200 px-5 py-3 dark:border-neutral-700" aria-label="CIF pages">
-                            <button type="button" data-cif-page-target="1" aria-current="page" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white">Page 1 · Client Information</button>
-                            <button type="button" data-cif-page-target="2" class="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-700 dark:border-neutral-600 dark:text-neutral-200">Page 2 · Appointment Records</button>
+                            <button type="button" data-cif-page-target="1" aria-current="page" class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white dark:bg-emerald-600">Page 1 · Client Information</button>
+                            <button type="button" data-cif-page-target="2" class="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700">Page 2 · Appointment Records</button>
                         </nav>
 
                         <section data-cif-page="1" class="min-h-0 flex-1 space-y-5 overflow-y-auto bg-neutral-50 p-5 dark:bg-neutral-950">
@@ -156,7 +156,7 @@
                             @endforeach
                         </section>
 
-                        <section data-cif-page="2" class="hidden min-h-0 flex-1 overflow-y-auto p-5">
+                        <section data-cif-page="2" class="hidden min-h-0 flex-1 overflow-y-auto bg-white p-5 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
                             <div class="overflow-x-auto rounded-xl border border-neutral-200 dark:border-neutral-700">
                                 <table class="min-w-full text-left text-sm">
                                     <thead class="bg-neutral-100 text-xs font-bold uppercase tracking-wide text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200">
@@ -187,7 +187,7 @@
             </dialog>
         @endforeach
 
-        <dialog id="student-record-preview-modal" class="h-[90vh] w-[min(72rem,calc(100%-2rem))] max-w-none rounded-2xl border border-neutral-200 bg-white p-0 shadow-2xl backdrop:bg-black/50 dark:border-neutral-700 dark:bg-neutral-900">
+        <dialog id="student-record-preview-modal" class="h-[90vh] w-[min(72rem,calc(100%-2rem))] max-w-none rounded-2xl border border-neutral-200 bg-white p-0 text-neutral-900 shadow-2xl backdrop:bg-black/50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100">
             <div class="flex h-full flex-col">
                 <div class="flex items-center justify-between gap-4 border-b border-neutral-200 px-5 py-4 dark:border-neutral-700">
                     <div>
@@ -201,7 +201,7 @@
             </div>
         </dialog>
 
-        <dialog id="student-appointments-modal" class="h-[85vh] w-[min(72rem,calc(100%-2rem))] max-w-none rounded-2xl border border-sky-200 bg-white p-0 shadow-2xl backdrop:bg-black/50 dark:border-sky-900 dark:bg-neutral-900">
+        <dialog id="student-appointments-modal" class="h-[85vh] w-[min(72rem,calc(100%-2rem))] max-w-none rounded-2xl border border-sky-200 bg-white p-0 text-neutral-900 shadow-2xl backdrop:bg-black/50 dark:border-sky-900 dark:bg-neutral-900 dark:text-neutral-100">
             <div class="flex h-full flex-col">
                 <div class="flex items-center justify-between gap-4 border-b border-neutral-200 px-5 py-4 dark:border-neutral-700">
                     <div>
@@ -247,11 +247,18 @@
                         pageButtons.forEach((pageButton) => {
                             const isSelected = pageButton === button;
                             pageButton.setAttribute('aria-current', isSelected ? 'page' : 'false');
-                            pageButton.classList.toggle('bg-blue-600', isSelected);
+                            pageButton.classList.toggle('bg-emerald-700', isSelected);
+                            pageButton.classList.toggle('dark:bg-emerald-600', isSelected);
                             pageButton.classList.toggle('text-white', isSelected);
                             pageButton.classList.toggle('border', !isSelected);
                             pageButton.classList.toggle('border-neutral-300', !isSelected);
+                            pageButton.classList.toggle('dark:border-neutral-600', !isSelected);
+                            pageButton.classList.toggle('bg-white', !isSelected);
+                            pageButton.classList.toggle('dark:bg-neutral-800', !isSelected);
                             pageButton.classList.toggle('text-neutral-700', !isSelected);
+                            pageButton.classList.toggle('dark:text-neutral-200', !isSelected);
+                            pageButton.classList.toggle('hover:bg-neutral-50', !isSelected);
+                            pageButton.classList.toggle('dark:hover:bg-neutral-700', !isSelected);
                         });
                         pages.forEach((page) => {
                             page.classList.toggle('hidden', page.dataset.cifPage !== selectedPage);

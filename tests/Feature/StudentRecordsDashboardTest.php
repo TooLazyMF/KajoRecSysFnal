@@ -193,6 +193,8 @@ class StudentRecordsDashboardTest extends TestCase
             ->get(route('guidance.students-records'))
             ->assertOk()
             ->assertSee('CIF Filled First Name')
+            ->assertSee('dark:bg-neutral-900 dark:text-neutral-100', false)
+            ->assertSee('bg-emerald-700', false)
             ->assertSee('Page 1 · Client Information')
             ->assertSee('Page 2 · Appointment Records')
             ->assertSee('data-cif-page="1"', false)

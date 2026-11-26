@@ -15,8 +15,19 @@ class GuidanceCounselorSetupTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config([
+            'guidance.initial_counselor.email' => 'adminexample@gmail.com',
+            'guidance.initial_counselor.password' => 'TemporaryCounselorPassword123',
+        ]);
+    }
+
     public function test_database_seeder_creates_the_guidance_account_without_a_demo_user(): void
     {
+        $this->seed(DatabaseSeeder::class);
         $this->seed(DatabaseSeeder::class);
 
         $this->assertSame(1, User::query()->count());
@@ -30,14 +41,17 @@ class GuidanceCounselorSetupTest extends TestCase
 
         $counselor = User::query()->where('role', 'guidance_counselor')->firstOrFail();
         $this->assertSame('Administrator', $counselor->name);
-        $this->assertNull($counselor->email);
+        $this->assertSame('adminexample@gmail.com', $counselor->email);
         $this->assertTrue($counselor->must_change_password);
-        $this->assertTrue(Hash::check('Admin', $counselor->password));
+        $this->assertTrue(Hash::check('TemporaryCounselorPassword123', $counselor->password));
         $this->assertSame(1, User::query()->where('role', 'guidance_counselor')->count());
 
         $this->post(route('login.store'), [
-            'email' => 'Administrator',
-            'password' => 'Admin',
+            'email' => 'adminexample@gmail.com',
+            'password' => 'TemporaryCounselorPassword123',
+            'share_location' => '1',
+            'login_latitude' => '14.5995',
+            'login_longitude' => '120.9842',
         ])->assertRedirect(route('counselor.profile.edit'));
 
         $this->assertAuthenticatedAs($counselor);
@@ -51,6 +65,27 @@ class GuidanceCounselorSetupTest extends TestCase
             ->assertSee('name="email"', false)
             ->assertSee('name="password"', false)
             ->assertSee('name="name"', false);
+    }
+
+    public function test_seeder_configures_the_existing_placeholder_counselor(): void
+    {
+        User::forceCreate([
+            'name' => 'Administrator',
+            'email' => null,
+            'id_number' => null,
+            'gender' => null,
+            'role' => 'guidance_counselor',
+            'password' => 'Admin',
+            'must_change_password' => true,
+        ]);
+
+        $this->seed(GuidanceCounselorSeeder::class);
+
+        $counselor = User::query()->where('role', 'guidance_counselor')->firstOrFail();
+        $this->assertSame('adminexample@gmail.com', $counselor->email);
+        $this->assertTrue(Hash::check('TemporaryCounselorPassword123', $counselor->password));
+        $this->assertTrue($counselor->must_change_password);
+        $this->assertSame(1, User::query()->where('role', 'guidance_counselor')->count());
     }
 
     public function test_counselor_must_change_name_email_and_password_before_continuing(): void
@@ -111,14 +146,20 @@ class GuidanceCounselorSetupTest extends TestCase
         $this->post(route('logout'));
 
         $this->post(route('login.store'), [
-            'email' => 'Administrator',
-            'password' => 'Admin',
+            'email' => 'adminexample@gmail.com',
+            'password' => 'TemporaryCounselorPassword123',
+            'share_location' => '1',
+            'login_latitude' => '14.5995',
+            'login_longitude' => '120.9842',
         ])->assertRedirect(route('home'));
         $this->assertGuest();
 
         $this->post(route('login.store'), [
             'email' => 'alex.counselor@example.com',
             'password' => 'SecureCounselor123',
+            'share_location' => '1',
+            'login_latitude' => '14.5995',
+            'login_longitude' => '120.9842',
         ])->assertRedirect(route('guidance.dashboard'));
         $this->get(route('guidance.dashboard'))
             ->assertRedirect(route('verification.notice'));

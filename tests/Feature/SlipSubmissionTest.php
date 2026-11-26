@@ -7,6 +7,7 @@ use App\Models\SlipAssignment;
 use App\Models\SlipSubmission;
 use App\Models\StudentReference;
 use App\Models\User;
+use App\Notifications\WorkflowActivity;
 use App\Support\SlipCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -16,6 +17,32 @@ use Tests\TestCase;
 class SlipSubmissionTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_teacher_referral_notifies_guidance_and_student_with_the_cause_and_submission_link(): void
+    {
+        Notification::fake();
+        Storage::fake('local');
+        $teacher = User::factory()->create(['name' => 'Alex Teacher', 'role' => 'teacher']);
+        $student = User::factory()->create(['name' => 'Jamie Student', 'role' => 'student']);
+        $counselor = User::factory()->create(['role' => 'guidance_counselor']);
+
+        $referral = $this->sendTeacherReferral($teacher, $student);
+        $submission = $referral->slipSubmission;
+
+        Notification::assertSentTo(
+            $counselor,
+            WorkflowActivity::class,
+            fn (WorkflowActivity $notification): bool => $notification->toDatabase($counselor)['message']
+                === 'Teacher Alex Teacher sent a referral for Jamie Student. Cause: Class Attendance.',
+        );
+        Notification::assertSentTo(
+            $student,
+            WorkflowActivity::class,
+            fn (WorkflowActivity $notification): bool => $notification->toDatabase($student)['message']
+                === 'Your teacher, Alex Teacher, sent a referral for you. Cause: Class Attendance.'
+                && $notification->toDatabase($student)['url'] === route('slips.submissions.show', $submission),
+        );
+    }
 
     public function test_client_information_form_prefills_and_locks_imported_student_details(): void
     {
@@ -514,6 +541,7 @@ class SlipSubmissionTest extends TestCase
 
     public function test_guidance_auto_generates_class_admission_receipt_and_requires_one_action_choice(): void
     {
+        Notification::fake();
         Storage::fake('local');
         $teacher = User::factory()->create(['role' => 'teacher']);
         $student = User::factory()->create(['role' => 'student']);
@@ -618,6 +646,7 @@ class SlipSubmissionTest extends TestCase
 
     public function test_student_receives_cif_once_and_class_admission_after_a_received_referral(): void
     {
+        Notification::fake();
         Storage::fake('local');
         $teacher = User::factory()->create([
             'id_number' => 'FLOW-TEACHER-2',
@@ -758,6 +787,14 @@ class SlipSubmissionTest extends TestCase
                 ],
             ])
             ->assertRedirect(route('guidance.slip-review'));
+
+        Notification::assertSentTo(
+            $teacher,
+            WorkflowActivity::class,
+            fn (WorkflowActivity $notification): bool => $notification->toDatabase($teacher)['message']
+                === "The result of {$student->name}'s referral is done."
+                && $notification->toDatabase($teacher)['url'] === route('slips.submissions.show', $classAdmissionSubmission),
+        );
 
         $this->assertSame('approved', $classAdmission->fresh()->status);
         $this->assertSame(

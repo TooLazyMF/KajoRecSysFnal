@@ -95,7 +95,7 @@
                 </div>
                 <div class="space-y-4 px-5 pb-5 sm:px-6 sm:pb-6">
                     @forelse ($teacherRequests as $teacherRequest)
-                        <article class="rounded-xl border border-neutral-200 p-4 dark:border-neutral-700">
+                        <article id="teacher-account-request-{{ $teacherRequest->id }}" class="rounded-xl border border-neutral-200 p-4 dark:border-neutral-700">
                             <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                 <div>
                                     <h3 class="font-semibold">{{ $teacherRequest->name }}</h3>

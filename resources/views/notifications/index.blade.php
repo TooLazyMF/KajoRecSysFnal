@@ -3,7 +3,7 @@
         <div class="mx-auto w-full max-w-4xl space-y-6">
             <header>
                 <h1 class="text-3xl font-bold">Notifications</h1>
-                <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400">Updates about your appointments and referrals.</p>
+                <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400">Unread updates for your account. Opening an update marks it as read and removes it from this list.</p>
             </header>
 
             @if (session('status'))
@@ -25,7 +25,7 @@
                     </div>
                     <div class="mt-4 flex flex-wrap gap-3">
                         @if (filled($data['url'] ?? null))
-                            <a href="{{ $data['url'] }}" class="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800">View update</a>
+                            <a href="{{ route('notifications.open', $notification->id) }}" class="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800">View update</a>
                         @endif
                         @if (! $notification->read_at)
                             <form method="POST" action="{{ route('notifications.read', $notification->id) }}">

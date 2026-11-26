@@ -95,7 +95,11 @@ class EmailVerificationOtpController extends Controller
         $registration = $pendingRegistration->registration($request);
 
         if ($registration) {
+            $sessionLogger->captureLoginLocation($request);
+
             if (! $pendingRegistration->verify($request, $request->string('otp')->toString())) {
+                $sessionLogger->clearPendingLoginLocation($request);
+
                 return back()
                     ->withErrors(['otp' => 'The code is invalid or has expired. Request a new code and try again.'])
                     ->withInput();
@@ -106,6 +110,7 @@ class EmailVerificationOtpController extends Controller
             } catch (ValidationException $exception) {
                 $registrationInput = $pendingRegistration->formInput($request);
                 $pendingRegistration->finish($request);
+                $sessionLogger->clearPendingLoginLocation($request);
 
                 return to_route('home')
                     ->withInput($registrationInput)

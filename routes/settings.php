@@ -12,6 +12,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('settings/profile/client-information', [SlipSubmissionController::class, 'editClientInformation'])
         ->name('profile.client-information.edit');
     Route::get('settings/account-logs', [AccountLogController::class, 'index'])->name('account-logs.index');
+    Route::post('settings/account-logs/{accountSessionLog}/logout', [AccountLogController::class, 'logoutDevice'])
+        ->name('account-logs.logout-device');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

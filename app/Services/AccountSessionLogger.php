@@ -4,8 +4,11 @@ namespace App\Services;
 
 use App\Models\AccountSessionLog;
 use App\Models\User;
+use App\Support\SensitiveLookup;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class AccountSessionLogger
 {
@@ -21,7 +24,8 @@ class AccountSessionLogger
 
     public function start(Request $request, User $user): AccountSessionLog
     {
-        $sessionHash = hash('sha256', $request->session()->getId());
+        $sessionHash = SensitiveLookup::hash('session_id', $request->session()->getId())
+            ?? throw new \LogicException('A session ID hash could not be generated.');
         $location = $request->session()->pull(self::PENDING_LOCATION_SESSION_KEY, []);
         $now = CarbonImmutable::now();
 
@@ -42,6 +46,63 @@ class AccountSessionLogger
         $request->session()->put(self::LAST_DATABASE_TOUCH_SESSION_KEY, $now->timestamp);
 
         return $log;
+    }
+
+    public function logoutDevice(Request $request, User $user, AccountSessionLog $log): bool
+    {
+        $log = AccountSessionLog::query()
+            ->where('user_id', $user->id)
+            ->whereKey($log->getKey())
+            ->firstOrFail();
+
+        if ($log->logged_out_at !== null) {
+            return false;
+        }
+
+        if ((int) $request->session()->get(self::LOG_ID_SESSION_KEY) === $log->id) {
+            $this->close($request, $user);
+
+            return true;
+        }
+
+        if (config('session.driver') !== 'database') {
+            return false;
+        }
+
+        $sessionConnection = DB::connection(config('session.connection'));
+        $accountConnection = $log->getConnection();
+        $now = CarbonImmutable::now();
+        $revokeAndUpdate = function () use ($sessionConnection, $accountConnection, $log, $user, $now): bool {
+            $deleted = $sessionConnection->table(config('session.table'))
+                ->where('id', $log->session_hash)
+                ->where('user_id', $user->id)
+                ->delete();
+
+            if ($deleted === 0) {
+                return false;
+            }
+
+            $updated = $accountConnection->table('account_session_logs')
+                ->where('id', $log->id)
+                ->where('user_id', $user->id)
+                ->whereNull('logged_out_at')
+                ->update([
+                    'logged_out_at' => $now,
+                    'updated_at' => $now,
+                ]);
+
+            if ($updated !== 1) {
+                throw new \RuntimeException('The device session was revoked, but its account log could not be updated.');
+            }
+
+            return true;
+        };
+
+        if ($sessionConnection->getName() === $accountConnection->getName()) {
+            return $sessionConnection->transaction($revokeAndUpdate);
+        }
+
+        return $revokeAndUpdate();
     }
 
     public function touch(Request $request): void
@@ -89,7 +150,9 @@ class AccountSessionLogger
         if (! $request->boolean('share_location')) {
             $request->session()->forget(self::PENDING_LOCATION_SESSION_KEY);
 
-            return;
+            throw ValidationException::withMessages([
+                'share_location' => 'Location sharing is required to sign in and record this device.',
+            ]);
         }
 
         $latitude = $request->input('login_latitude');
@@ -98,7 +161,9 @@ class AccountSessionLogger
         if (! is_numeric($latitude) || ! is_numeric($longitude)) {
             $request->session()->forget(self::PENDING_LOCATION_SESSION_KEY);
 
-            return;
+            throw ValidationException::withMessages([
+                'share_location' => 'Allow location access to sign in and record this device.',
+            ]);
         }
 
         $latitude = (float) $latitude;
@@ -106,13 +171,28 @@ class AccountSessionLogger
         if ($latitude < -90 || $latitude > 90 || $longitude < -180 || $longitude > 180) {
             $request->session()->forget(self::PENDING_LOCATION_SESSION_KEY);
 
-            return;
+            throw ValidationException::withMessages([
+                'share_location' => 'A valid device location is required to sign in.',
+            ]);
         }
 
         $request->session()->put(self::PENDING_LOCATION_SESSION_KEY, [
             'latitude' => $latitude,
             'longitude' => $longitude,
         ]);
+    }
+
+    public function hasPendingLoginLocation(Request $request): bool
+    {
+        $location = $request->session()->get(self::PENDING_LOCATION_SESSION_KEY);
+
+        return is_array($location)
+            && isset($location['latitude'], $location['longitude']);
+    }
+
+    public function clearPendingLoginLocation(Request $request): void
+    {
+        $request->session()->forget(self::PENDING_LOCATION_SESSION_KEY);
     }
 
     private function deviceName(?string $userAgent): string

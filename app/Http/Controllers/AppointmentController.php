@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Notifications\ReferralAppointmentUpdate;
 use App\Notifications\WorkflowActivity;
 use App\Services\AppointmentAvailability;
+use App\Support\SlipCatalog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -289,7 +290,6 @@ class AppointmentController extends Controller
         $this->notifyAppointmentParticipants(
             $appointment,
             'Appointment requested',
-            $request->user()->name.' requested a counseling appointment.',
         );
 
         return redirect()
@@ -543,16 +543,23 @@ class AppointmentController extends Controller
         }
 
         $referral = SlipAssignment::query()
-            ->with(['student', 'assignedBy'])
+            ->with(['student', 'assignedBy', 'slipSubmission'])
             ->find($appointment->referral_id);
         if (! $referral) {
             return;
+        }
+
+        $referralData = $referral->slipSubmission?->data?->getArrayCopy() ?? [];
+        $cause = SlipCatalog::referralCauseText($referralData);
+        if ($cause === 'Not specified') {
+            $cause = $appointment->concerns ?? $appointment->purpose;
         }
 
         $notification = new ReferralAppointmentUpdate(
             $event,
             $referral->student?->name ?? 'the referred student',
             $appointment->scheduled_at?->format('M j, Y g:i A') ?? 'the proposed time',
+            $cause,
             (int) $referral->id,
             (int) $appointment->id,
         );
@@ -577,14 +584,14 @@ class AppointmentController extends Controller
         }
     }
 
-    private function notifyAppointmentParticipants(Appointment $appointment, string $title, string $message): void
+    private function notifyAppointmentParticipants(Appointment $appointment, string $title): void
     {
         foreach (User::query()->where('role', 'guidance_counselor')->get() as $counselor) {
             try {
                 $counselor->notify(new WorkflowActivity(
                     $title,
-                    $message,
-                    route('appointments.index'),
+                    $appointment->requester?->name.' requested an appointment for '.$appointment->purpose.'.',
+                    route('appointments.index').'#appointment-'.$appointment->id,
                     'appointment',
                     $appointment->id,
                 ));
@@ -670,7 +677,6 @@ class AppointmentController extends Controller
         $this->notifyAppointmentParticipants(
             $appointment,
             'Re-appointment requested',
-            $request->user()->name.' requested a different counseling appointment time.',
         );
 
         return redirect()

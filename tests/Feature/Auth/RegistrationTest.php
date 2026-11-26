@@ -39,6 +39,8 @@ class RegistrationTest extends TestCase
             ->assertSee('Student ID')
             ->assertSee('Gender')
             ->assertSee('Use an email address you can access. We will send a verification code; verify it to use your account.')
+            ->assertSee('id="student-registration-unavailable-modal"', false)
+            ->assertSee('data-return-to-login', false)
             ->assertSee('The guidance counselor has not imported the student list yet.');
     }
 
@@ -149,6 +151,52 @@ class RegistrationTest extends TestCase
         Notification::assertSentOnDemand(EmailOtp::class);
     }
 
+    public function test_teacher_photo_prompt_only_appears_after_registration_misses_the_student_list(): void
+    {
+        $this->get(route('home', ['panel' => 'register']))
+            ->assertOk()
+            ->assertDontSee('Faculty verification photo')
+            ->assertDontSee('Faculty verification required');
+
+        $registration = [
+            '_welcome_panel' => 'register',
+            'first_name' => 'Faculty',
+            'last_name' => 'Member',
+            'id_number' => '90001',
+            'gender' => 'female',
+            'email' => 'faculty.member@example.com',
+            'password' => 'RegistrationPass123',
+            'password_confirmation' => 'RegistrationPass123',
+        ];
+
+        $this->from(route('home'))
+            ->post(route('register.store'), $registration)
+            ->assertRedirect(route('home'))
+            ->assertSessionHas('show_teacher_verification_modal', true);
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('data-mode="register"', false)
+            ->assertSee('data-teacher-verification-modal', false)
+            ->assertSee('Faculty verification required')
+            ->assertSee('Faculty verification photo');
+
+        $this->from(route('home'))
+            ->post(route('register.store'), [
+                ...$registration,
+                'teacher_request_confirmation' => '1',
+            ])
+            ->assertRedirect(route('home'))
+            ->assertSessionHas('show_teacher_verification_modal', true)
+            ->assertSessionHasErrors('verification_photo');
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('Faculty verification photo')
+            ->assertSee('is required');
+        $this->assertDatabaseMissing('users', ['email' => 'faculty.member@example.com']);
+    }
+
     public function test_student_registration_rejects_non_numeric_ids(): void
     {
         Notification::fake();
@@ -202,6 +250,10 @@ class RegistrationTest extends TestCase
         Notification::fake();
         $this->createStudentReference('1002', 'Jane Doe', 'female');
 
+        $this->get(route('home', ['panel' => 'register']))
+            ->assertOk()
+            ->assertDontSee('id="student-registration-unavailable-modal"', false);
+
         $this->post(route('register.store'), [
             'first_name' => 'Jane',
             'last_name' => 'Doe',
@@ -220,7 +272,12 @@ class RegistrationTest extends TestCase
             ->assertOk()
             ->assertSee('id="registration-verification-modal"', false);
         $this->from(route('home'))
-            ->post(route('verification.otp.verify'), ['otp' => $code])
+            ->post(route('verification.otp.verify'), [
+                'otp' => $code,
+                'share_location' => '1',
+                'login_latitude' => '14.5995',
+                'login_longitude' => '120.9842',
+            ])
             ->assertRedirect(route('student.dashboard', absolute: false).'?verified=1');
 
         $user = User::where('email_lookup_hash', SensitiveLookup::hash('email', 'jane@example.com'))->firstOrFail();
@@ -247,7 +304,12 @@ class RegistrationTest extends TestCase
         $invalidCode = $code === '999999' ? '000000' : '999999';
 
         $this->from(route('home'))
-            ->post(route('verification.otp.verify'), ['otp' => $invalidCode])
+            ->post(route('verification.otp.verify'), [
+                'otp' => $invalidCode,
+                'share_location' => '1',
+                'login_latitude' => '14.5995',
+                'login_longitude' => '120.9842',
+            ])
             ->assertRedirect(route('home'))
             ->assertSessionHasErrors('otp');
 
@@ -255,6 +317,46 @@ class RegistrationTest extends TestCase
             ->assertOk()
             ->assertSee('id="registration-verification-modal"', false);
         $this->assertDatabaseMissing('users', ['email_lookup_hash' => SensitiveLookup::hash('email', 'verify-later@example.com')]);
+    }
+
+    public function test_registration_activation_requires_location_without_consuming_the_code(): void
+    {
+        Notification::fake();
+        $this->createStudentReference('1005', 'Location Required', 'female');
+
+        $this->post(route('register.store'), [
+            'first_name' => 'Location',
+            'last_name' => 'Required',
+            'id_number' => '1005',
+            'gender' => 'female',
+            'email' => 'location-required@example.com',
+            'password' => 'RegistrationPass123',
+            'password_confirmation' => 'RegistrationPass123',
+        ])->assertRedirect(route('home', absolute: false));
+
+        $code = $this->registrationOtpCode('location-required@example.com');
+        $this->from(route('home'))
+            ->post(route('verification.otp.verify'), ['otp' => $code])
+            ->assertRedirect(route('home'))
+            ->assertSessionHasErrors('share_location');
+
+        $this->assertDatabaseMissing('users', [
+            'email_lookup_hash' => SensitiveLookup::hash('email', 'location-required@example.com'),
+        ]);
+
+        $this->from(route('home'))
+            ->post(route('verification.otp.verify'), [
+                'otp' => $code,
+                'share_location' => '1',
+                'login_latitude' => '14.5995',
+                'login_longitude' => '120.9842',
+            ])
+            ->assertRedirect(route('student.dashboard', absolute: false).'?verified=1');
+
+        $user = User::where('email_lookup_hash', SensitiveLookup::hash('email', 'location-required@example.com'))->firstOrFail();
+        $log = $user->accountSessionLogs()->sole();
+        $this->assertSame('14.5995', $log->latitude);
+        $this->assertSame('120.9842', $log->longitude);
     }
 
     public function test_registration_after_logout_does_not_restore_the_previous_account(): void

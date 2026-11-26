@@ -1,6 +1,6 @@
 <x-layouts::auth :title="__('Log in')">
     <div class="flex flex-col gap-6">
-        <x-auth-header :title="__('Log in to your account')" :description="__('Enter your email address or account name and password to log in')" />
+        <x-auth-header :title="__('Log in to your account')" :description="__('Enter your email and password to log in')" />
 
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
@@ -15,20 +15,20 @@
 
         <form id="login-form" method="POST" action="{{ route('login.root') }}" class="flex flex-col gap-6">
             @csrf
+            <input type="hidden" name="share_location" value="1">
             <input type="hidden" name="login_latitude" id="login-latitude">
             <input type="hidden" name="login_longitude" id="login-longitude">
 
-            <!-- Email or account name -->
             <flux:input
                 id="login-email"
                 name="email"
-                :label="__('Email address or account name')"
+                :label="__('Email')"
                 :value="old('email')"
                 type="text"
                 required
                 autofocus
                 autocomplete="username"
-                placeholder="Email address or account name"
+                placeholder="Email"
             />
 
             <!-- Password -->
@@ -54,16 +54,13 @@
             <!-- Remember Me -->
             <flux:checkbox name="remember" :label="__('Remember me')" :checked="old('remember')" />
 
-            <label class="flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-300">
-                <input
-                    id="share-login-location"
-                    name="share_location"
-                    type="checkbox"
-                    value="1"
-                    class="mt-1 rounded border-zinc-300 text-emerald-700 focus:ring-emerald-700 dark:border-zinc-600 dark:bg-zinc-800"
-                >
-                <span>Share this device’s location in my account logs. Your browser will ask permission; coordinates stay in this system and are never sent to a location provider.</span>
-            </label>
+            <p class="text-sm text-zinc-600 dark:text-zinc-300">Location permission is required to sign in and record this device. Your browser will ask permission; coordinates stay in this system and are never sent to a location provider.</p>
+            <p data-location-error role="alert" class="text-sm text-red-600 dark:text-red-400" hidden>
+                Location access is required to sign in. Allow location access in your browser and try again.
+            </p>
+            @error('share_location')
+                <p role="alert" class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+            @enderror
 
             <div class="flex items-center justify-end">
                 <flux:button variant="primary" type="submit" class="w-full" data-test="login-button" data-loading-button data-loading-label="Signing in...">
@@ -145,25 +142,27 @@
         });
 
         const loginForm = document.getElementById('login-form');
-        const shareLocation = document.getElementById('share-login-location');
         let locationSubmissionStarted = false;
         let loginSubmitted = false;
 
         loginForm?.addEventListener('submit', (event) => {
-            const button = loginForm.querySelector('[data-loading-button]');
-            button.disabled = true;
-            button.querySelector('[data-button-label]').textContent = button.dataset.loadingLabel;
-            button.querySelector('[data-loading-spinner]').hidden = false;
-            const status = loginForm.querySelector('[data-submit-status]');
-            status.textContent = button.dataset.loadingLabel;
-            status.hidden = false;
-
-            if (!shareLocation?.checked || locationSubmissionStarted) {
+            if (locationSubmissionStarted) {
+                event.preventDefault();
                 return;
             }
 
             event.preventDefault();
             locationSubmissionStarted = true;
+            const button = loginForm.querySelector('[data-loading-button]');
+            const status = loginForm.querySelector('[data-submit-status]');
+            const locationError = loginForm.querySelector('[data-location-error]');
+            const label = button.querySelector('[data-button-label]');
+            locationError.hidden = true;
+            button.disabled = true;
+            label.textContent = 'Getting location...';
+            button.querySelector('[data-loading-spinner]').hidden = false;
+            status.textContent = 'Getting device location...';
+            status.hidden = false;
 
             const submitLogin = () => {
                 if (loginSubmitted) {
@@ -171,6 +170,8 @@
                 }
 
                 loginSubmitted = true;
+                label.textContent = button.dataset.loadingLabel;
+                status.textContent = button.dataset.loadingLabel;
                 HTMLFormElement.prototype.submit.call(loginForm);
             };
             const submitWithLocation = (position) => {
@@ -178,18 +179,25 @@
                 document.getElementById('login-longitude').value = position.coords.longitude;
                 submitLogin();
             };
+            const locationFailed = () => {
+                locationSubmissionStarted = false;
+                button.disabled = false;
+                label.textContent = 'Log in';
+                button.querySelector('[data-loading-spinner]').hidden = true;
+                status.hidden = true;
+                locationError.hidden = false;
+            };
 
             if (!navigator.geolocation) {
-                submitLogin();
+                locationFailed();
                 return;
             }
 
-            navigator.geolocation.getCurrentPosition(submitWithLocation, submitLogin, {
+            navigator.geolocation.getCurrentPosition(submitWithLocation, locationFailed, {
                 enableHighAccuracy: false,
                 maximumAge: 60000,
                 timeout: 5000,
             });
-            window.setTimeout(submitLogin, 5500);
         });
     </script>
 </x-layouts::auth>

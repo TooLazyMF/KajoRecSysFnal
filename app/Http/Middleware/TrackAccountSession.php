@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Models\AccountSessionLog;
 use App\Services\AccountSessionLogger;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -16,12 +17,26 @@ class TrackAccountSession
 
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->routeIs('login.store', 'login.root') && $request->isMethod('post')) {
+        if ($request->routeIs('login.store', 'login.root', 'login.location') && $request->isMethod('post')) {
             $this->logger->captureLoginLocation($request);
         }
 
         $user = $request->user();
         if ($user instanceof User) {
+            $logId = $request->session()->get('account_session_log_id');
+            if (is_numeric($logId)
+                && AccountSessionLog::query()
+                    ->whereKey((int) $logId)
+                    ->where('user_id', $user->id)
+                    ->whereNotNull('logged_out_at')
+                    ->exists()) {
+                Auth::guard('web')->logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return to_route('login')->with('status', 'This device was logged out from your account.');
+            }
+
             $lastActivity = $request->session()->get('account_last_activity_at');
             if (is_numeric($lastActivity)
                 && (int) $lastActivity <= now()->subMinutes(AccountSessionLogger::IDLE_TIMEOUT_MINUTES)->timestamp) {

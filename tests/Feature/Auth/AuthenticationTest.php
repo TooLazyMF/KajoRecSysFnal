@@ -20,9 +20,11 @@ class AuthenticationTest extends TestCase
         $this->get(route('home', ['panel' => 'login']))
             ->assertOk()
             ->assertSee('data-mode="login"', false)
-            ->assertSee('Email address or account name')
+            ->assertSee('Email')
+            ->assertDontSee('Email address or account name')
             ->assertSee('Sign in with a passkey')
             ->assertSee('name="share_location"', false)
+            ->assertDontSee('id="share-login-location"', false)
             ->assertSee('name="login_latitude"', false)
             ->assertSee('name="login_longitude"', false)
             ->assertSee('data-loading-spinner', false)
@@ -49,6 +51,9 @@ class AuthenticationTest extends TestCase
         $response = $this->post(route('login.store'), [
             'email' => $user->email,
             'password' => 'password',
+            'share_location' => '1',
+            'login_latitude' => '14.5995',
+            'login_longitude' => '120.9842',
         ]);
 
         $response
@@ -65,6 +70,9 @@ class AuthenticationTest extends TestCase
         $response = $this->post(route('login.store'), [
             'email' => $user->email,
             'password' => 'wrong-password',
+            'share_location' => '1',
+            'login_latitude' => '14.5995',
+            'login_longitude' => '120.9842',
         ]);
 
         $response->assertSessionHasErrorsIn('email');
@@ -95,6 +103,9 @@ class AuthenticationTest extends TestCase
         $response = $this->post(route('login.store'), [
             'email' => $user->email,
             'password' => 'password',
+            'share_location' => '1',
+            'login_latitude' => '14.5995',
+            'login_longitude' => '120.9842',
         ]);
 
         $response->assertRedirect(route('two-factor.login'));

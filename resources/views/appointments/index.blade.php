@@ -126,7 +126,7 @@
                                         <ul class="space-y-4 border-t border-gray-200 p-4 dark:border-zinc-800 sm:p-5">
                             @endif
                             @foreach ($studentAppointments as $appointment)
-                            <li @class([
+                            <li id="appointment-{{ $appointment->id }}" @class([
                                 'rounded-xl border border-gray-200 transition dark:border-zinc-800' => auth()->user()->role === 'guidance_counselor',
                                 'rounded-xl border border-gray-200 p-5 transition hover:border-green-300 hover:shadow-sm dark:border-zinc-800 dark:hover:border-green-800 sm:p-6' => auth()->user()->role !== 'guidance_counselor',
                             ])>

@@ -201,6 +201,32 @@
                 </section>
             @endif
 
+            @if (
+                auth()->user()->role === 'guidance_counselor'
+                && $assignment
+                && $assignment->assigned_by === $assignment->student_id
+                && in_array($assignment->slip, array_keys(\App\Support\SlipCatalog::studentRequestForms()), true)
+            )
+                <section class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-zinc-200">
+                    <flux:heading size="lg">Send an update to the student</flux:heading>
+                    <flux:text class="mt-1 text-zinc-600">Send a message about this specific form request. The student will receive it in their notifications.</flux:text>
+                    @if (session('status'))
+                        <p role="status" class="mt-3 rounded-lg bg-green-50 p-3 text-sm text-green-800">{{ session('status') }}</p>
+                    @endif
+                    <form method="POST" action="{{ route('guidance.slip-submissions.notify-student', $submission) }}" class="mt-4 space-y-3">
+                        @csrf
+                        <label class="block text-sm font-medium">
+                            Update message
+                            <textarea name="message" rows="3" maxlength="2000" required class="mt-1 w-full rounded-lg border-zinc-300 text-sm shadow-sm focus:border-green-700 focus:ring-green-700"></textarea>
+                        </label>
+                        @error('message')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+                        <div class="flex justify-end">
+                            <flux:button variant="primary" type="submit">Send update</flux:button>
+                        </div>
+                    </form>
+                </section>
+            @endif
+
             @if ($submission->slip === 'qf-bo-oss-04-client-information-form' || $referralPdfReady)
                 <iframe
                     src="{{ route('slips.submissions.system-preview', $submission) }}"

@@ -153,6 +153,16 @@ class TeacherAccountRequestController extends Controller
             throw $exception;
         }
 
+        foreach (User::query()->where('role', 'guidance_counselor')->get() as $counselor) {
+            $counselor->notify(new WorkflowActivity(
+                'Teacher account request',
+                'Teacher '.$teacherRequest->name.' is requesting approval to open an account.',
+                route('admin.users.index').'#teacher-account-request-'.$teacherRequest->id,
+                'teacher-account-request',
+                $teacherRequest->id,
+            ));
+        }
+
         try {
             $this->sendVerificationEmail($teacherRequest);
         } catch (TransportExceptionInterface $exception) {
@@ -399,7 +409,7 @@ class TeacherAccountRequestController extends Controller
             $counselor->notify(new WorkflowActivity(
                 'Teacher account request '.$decision,
                 'The teacher account request from '.$teacherRequest->name.' was '.$decision.'.',
-                route('admin.users.index'),
+                route('admin.users.index').'#teacher-account-request-'.$teacherRequest->id,
                 'teacher-account-request-'.$decision,
                 $teacherRequest->id,
             ));

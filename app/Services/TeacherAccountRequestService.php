@@ -80,8 +80,8 @@ class TeacherAccountRequestService
         foreach (User::query()->where('role', 'guidance_counselor')->get() as $counselor) {
             $counselor->notify(new WorkflowActivity(
                 'Teacher account request',
-                $teacherRequest->name.' is requesting a teacher account and needs faculty verification.',
-                route('admin.users.index'),
+                'Teacher '.$teacherRequest->name.' is requesting approval to open an account.',
+                route('admin.users.index').'#teacher-account-request-'.$teacherRequest->id,
                 'teacher-account-request',
                 $teacherRequest->id,
             ));

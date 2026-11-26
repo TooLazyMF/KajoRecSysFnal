@@ -706,15 +706,47 @@ class SlipSubmissionController extends Controller
             ]);
         });
 
-        $slipAssignment->refresh();
-        $this->notifyWorkflowParticipants(
-            [$slipAssignment->student, $slipAssignment->assignedBy],
-            'Form approved',
-            'The '.$this->slipDisplayName($slipAssignment->slip).' has been approved by Guidance.',
-            route('assigned-slips.index'),
-            'slip',
-            $slipAssignment->id,
-        );
+        $slipAssignment->refresh()->load(['student', 'assignedBy', 'slipSubmission', 'relatedAssignment.assignedBy']);
+        $submissionUrl = $slipAssignment->slipSubmission
+            ? route('slips.submissions.show', $slipAssignment->slipSubmission)
+            : route('assigned-slips.index');
+
+        if ($slipAssignment->slip === 'class-admission-slip') {
+            $this->notifyWorkflowParticipants(
+                [$slipAssignment->student],
+                'Your Class Admission result is ready',
+                'Guidance has released the result for your referral.',
+                $submissionUrl,
+                'referral-result',
+                $slipAssignment->id,
+            );
+
+            $teacher = $slipAssignment->relatedAssignment?->assignedBy;
+            if ($teacher?->role === 'teacher') {
+                $this->notifyWorkflowParticipants(
+                    [$teacher],
+                    'Referral result released',
+                    'The result of '.$slipAssignment->student->name."'s referral is done.",
+                    $submissionUrl,
+                    'referral-result',
+                    $slipAssignment->id,
+                );
+            }
+        } else {
+            $participants = [$slipAssignment->student];
+            if ($slipAssignment->assignedBy?->role === 'teacher') {
+                $participants[] = $slipAssignment->assignedBy;
+            }
+
+            $this->notifyWorkflowParticipants(
+                $participants,
+                'Form approved',
+                'The '.$this->slipDisplayName($slipAssignment->slip).' has been approved by Guidance.',
+                $submissionUrl,
+                'slip',
+                $slipAssignment->id,
+            );
+        }
 
         return redirect()
             ->route('guidance.slip-review')
@@ -974,12 +1006,24 @@ class SlipSubmissionController extends Controller
                     ]);
                 }
 
+                $cause = SlipCatalog::referralCauseText($referralData);
+                $submissionUrl = route('slips.submissions.show', $submission);
+
                 $this->notifyWorkflowParticipants(
-                    [$student, ...User::query()->where('role', 'guidance_counselor')->get()],
-                    'Referral submitted',
-                    'A student referral was submitted by '.$request->user()->name.' and requires Guidance review.',
-                    route('guidance.referrals'),
+                    User::query()->where('role', 'guidance_counselor')->get(),
+                    'Student referral received',
+                    'Teacher '.$request->user()->name.' sent a referral for '.$student->name.'. Cause: '.$cause.'.',
+                    $submissionUrl,
                     'referral',
+                    $assignment->id,
+                );
+                $this->notifyWorkflowParticipants(
+                    [$student],
+                    'Your teacher sent a referral',
+                    'Your teacher, '.$request->user()->name.', sent a referral for you. Cause: '.$cause.'.',
+                    $submissionUrl,
+                    'referral',
+                    $assignment->id,
                 );
 
                 return redirect()
@@ -1198,9 +1242,9 @@ class SlipSubmissionController extends Controller
 
         $this->notifyWorkflowParticipants(
             User::query()->where('role', 'guidance_counselor')->get()->all(),
-            'Form requested',
-            $request->user()->name.' requested the '.$this->slipDisplayName($slip).'.',
-            route('guidance.slip-review'),
+            'Student form request',
+            $request->user()->name.' requested a '.$this->slipDisplayName($slip).'.',
+            route('guidance.slip-review').'#slip-assignment-'.$assignment->id,
             'slip',
             $assignment->id,
         );
@@ -1891,13 +1935,20 @@ class SlipSubmissionController extends Controller
                 }
 
                 if ($lockedAssignment) {
-                    $lockedAssignment->update([
+                    $assignmentUpdates = [
                         'status' => 'submitted',
                         'slip_submission_id' => $submission->id,
                         'completed_at' => now(),
                         'approved_by' => null,
                         'approved_at' => null,
-                    ]);
+                    ];
+                    if (
+                        $lockedAssignment->assigned_by === $lockedAssignment->student_id
+                        && in_array($slip, array_keys(SlipCatalog::studentRequestForms()), true)
+                    ) {
+                        $assignmentUpdates['counselor_viewed_at'] = null;
+                    }
+                    $lockedAssignment->update($assignmentUpdates);
                 }
 
                 return $submission;
@@ -1907,23 +1958,46 @@ class SlipSubmissionController extends Controller
             throw $exception;
         }
 
-        $participants = [
-            $submission->user,
-            ...User::query()->where('role', 'guidance_counselor')->get()->all(),
-        ];
-        if ($assignment?->assignedBy !== null) {
-            $participants[] = $assignment->assignedBy;
+        $submissionUrl = route('slips.submissions.show', $submission);
+        $isStudentFormRequest = $request->user()->role === 'student'
+            && $assignment !== null
+            && $assignment->assigned_by === $assignment->student_id
+            && in_array($slip, array_keys(SlipCatalog::studentRequestForms()), true);
+
+        if ($isStudentFormRequest) {
+            $this->notifyWorkflowParticipants(
+                User::query()->where('role', 'guidance_counselor')->get(),
+                'Student form submitted',
+                $submission->user->name.' sent a '.$this->slipDisplayName($slip).'.',
+                $submissionUrl,
+                'slip-submitted',
+                $submission->id,
+            );
+            $this->notifyWorkflowParticipants(
+                [$submission->user],
+                'Form submitted',
+                'Your '.$this->slipDisplayName($slip).' was sent to Guidance and is awaiting review.',
+                $submissionUrl,
+                'slip',
+                $submission->id,
+            );
+        } else {
+            $participants = [
+                $submission->user,
+                ...User::query()->where('role', 'guidance_counselor')->get()->all(),
+            ];
+            if ($assignment?->assignedBy !== null) {
+                $participants[] = $assignment->assignedBy;
+            }
+            $this->notifyWorkflowParticipants(
+                $participants,
+                'Form submitted',
+                'The '.$this->slipDisplayName($slip).' was submitted and is awaiting review.',
+                $submissionUrl,
+                'slip',
+                $submission->id,
+            );
         }
-        $this->notifyWorkflowParticipants(
-            $participants,
-            'Form submitted',
-            'The '.$this->slipDisplayName($slip).' was submitted and is awaiting review.',
-            $request->user()->role === 'student'
-                ? route('assigned-slips.index')
-                : route('guidance.slip-review'),
-            'slip',
-            $submission->id,
-        );
 
         return redirect()->route('slips.submissions.show', $submission);
     }
@@ -1981,6 +2055,40 @@ class SlipSubmissionController extends Controller
         $assignment = SlipAssignment::query()
             ->where('slip_submission_id', $slipSubmission->id)
             ->first();
+
+        if (
+            $request->user()->role === 'guidance_counselor'
+            && $assignment !== null
+            && $assignment->assigned_by === $assignment->student_id
+            && in_array($assignment->slip, array_keys(SlipCatalog::studentRequestForms()), true)
+        ) {
+            $firstView = DB::transaction(function () use ($assignment): bool {
+                $lockedAssignment = SlipAssignment::query()
+                    ->whereKey($assignment->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($lockedAssignment->counselor_viewed_at !== null) {
+                    return false;
+                }
+
+                $lockedAssignment->update(['counselor_viewed_at' => now()]);
+
+                return true;
+            });
+
+            if ($firstView) {
+                $this->notifyWorkflowParticipants(
+                    [$assignment->student],
+                    'Your form was seen by Guidance',
+                    'The '.$this->slipDisplayName($assignment->slip).' was seen by the counselor. Please stand by for an update.',
+                    route('slips.submissions.show', $slipSubmission),
+                    'form-viewed',
+                    $slipSubmission->id,
+                );
+            }
+        }
+
         $guidanceData = $slipSubmission->data?->getArrayCopy() ?? [];
         if ($request->user()->role === 'guidance_counselor'
             && $slipSubmission->slip === 'class-admission-slip'
@@ -2002,6 +2110,34 @@ class SlipSubmissionController extends Controller
             'referralPdfReady' => $slipSubmission->slip !== 'student-referral-slip'
                 || $this->hasReferralDocumentControlData($slipSubmission->data?->getArrayCopy() ?? []),
         ]);
+    }
+
+    public function notifyStudentOfUpdate(Request $request, SlipSubmission $slipSubmission): RedirectResponse
+    {
+        abort_unless($request->user()->role === 'guidance_counselor', 403);
+        abort_unless(in_array($slipSubmission->slip, array_keys(SlipCatalog::studentRequestForms()), true), 404);
+
+        $assignment = SlipAssignment::query()
+            ->where('slip_submission_id', $slipSubmission->id)
+            ->where('student_id', $slipSubmission->user_id)
+            ->whereColumn('assigned_by', 'student_id')
+            ->firstOrFail();
+        $validated = $request->validate([
+            'message' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $this->notifyWorkflowParticipants(
+            [$assignment->student],
+            'Update from Guidance Counselor',
+            'Guidance Counselor update on your '.$this->slipDisplayName($slipSubmission->slip).': '.trim($validated['message']),
+            route('slips.submissions.show', $slipSubmission),
+            'form-update',
+            $slipSubmission->id,
+        );
+
+        return redirect()
+            ->route('slips.submissions.show', $slipSubmission)
+            ->with('status', 'Your update was sent to the student.');
     }
 
     public function attachment(Request $request, SlipSubmission $slipSubmission, int $attachment): StreamedResponse

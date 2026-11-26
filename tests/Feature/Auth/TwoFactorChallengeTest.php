@@ -40,6 +40,9 @@ class TwoFactorChallengeTest extends TestCase
         $this->post(route('login.store'), [
             'email' => $user->email,
             'password' => 'password',
+            'share_location' => '1',
+            'login_latitude' => '14.5995',
+            'login_longitude' => '120.9842',
         ])->assertRedirect(route('two-factor.login'));
     }
 
@@ -51,6 +54,9 @@ class TwoFactorChallengeTest extends TestCase
         $this->post(route('login.store'), [
             'email' => $user->email,
             'password' => 'password',
+            'share_location' => '1',
+            'login_latitude' => '14.5995',
+            'login_longitude' => '120.9842',
         ])->assertRedirect(route('two-factor.login'));
 
         $this->get(route('two-factor.login'))
@@ -71,12 +77,9 @@ class TwoFactorChallengeTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertAuthenticatedAs($user);
-        $this->assertDatabaseHas('account_session_logs', [
-            'user_id' => $user->id,
-            'latitude' => null,
-            'longitude' => null,
-            'logged_out_at' => null,
-        ]);
-        $this->assertSame(1, AccountSessionLog::query()->where('user_id', $user->id)->count());
+        $log = AccountSessionLog::query()->where('user_id', $user->id)->sole();
+        $this->assertSame('14.5995', $log->latitude);
+        $this->assertSame('120.9842', $log->longitude);
+        $this->assertNull($log->logged_out_at);
     }
 }

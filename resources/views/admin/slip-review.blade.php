@@ -43,7 +43,7 @@
                                                 ? route('slips.submissions.show', $assignment->slipSubmission)
                                                 : null);
                                     @endphp
-                                    <tr>
+                                    <tr id="slip-assignment-{{ $assignment->id }}">
                                         <td class="px-5 py-4 font-medium text-zinc-900 dark:text-zinc-100">{{ $title }}</td>
                                         <td class="px-5 py-4 text-zinc-600 dark:text-zinc-300">
                                             {{ $assignment->student->name }}

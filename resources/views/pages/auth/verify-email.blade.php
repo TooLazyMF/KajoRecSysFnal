@@ -25,24 +25,24 @@
                 <form method="POST" action="{{ route('verification.otp.verify') }}" class="mt-5 flex flex-col gap-4">
                     @csrf
                     <flux:input name="otp" :label="__('6-digit code')" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" data-digits-only required autocomplete="one-time-code" autofocus />
-                    <flux:button type="submit" variant="primary" class="w-full">
+                    <button type="submit" class="inline-flex w-full items-center justify-center rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 dark:bg-emerald-600 dark:hover:bg-emerald-500">
                         {{ __('Verify email') }}
-                    </flux:button>
+                    </button>
                 </form>
 
                 <div class="mt-4 flex flex-col items-center gap-3">
                     <form method="POST" action="{{ route('verification.otp.send') }}">
                         @csrf
-                        <flux:button type="submit" variant="ghost" class="w-full">
+                        <button type="submit" class="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950/70">
                             {{ __('Resend verification code') }}
-                        </flux:button>
+                        </button>
                     </form>
 
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
-                        <flux:button variant="ghost" type="submit" class="text-sm cursor-pointer" data-test="logout-button">
+                        <button type="submit" class="rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 transition hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white" data-test="logout-button">
                             {{ __('Log out') }}
-                        </flux:button>
+                        </button>
                     </form>
                 </div>
             </dialog>

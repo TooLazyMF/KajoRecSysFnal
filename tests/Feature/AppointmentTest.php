@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Models\SlipAssignment;
 use App\Models\User;
 use App\Notifications\ReferralAppointmentUpdate;
+use App\Notifications\WorkflowActivity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
@@ -14,6 +15,29 @@ use Tests\TestCase;
 class AppointmentTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_student_appointment_request_notifies_guidance_with_the_student_and_reason(): void
+    {
+        Notification::fake();
+        $student = User::factory()->create(['name' => 'Jamie Student', 'role' => 'student']);
+        $counselor = User::factory()->create(['role' => 'guidance_counselor']);
+        $date = now()->addDays(5);
+
+        $this->actingAs($student)
+            ->post(route('appointments.store'), [
+                'scheduled_date' => $date->format('Y-m-d'),
+                'scheduled_time' => '10:00',
+                'purpose' => 'Discuss academic support',
+            ])
+            ->assertRedirect(route('appointments.index'));
+
+        Notification::assertSentTo(
+            $counselor,
+            WorkflowActivity::class,
+            fn (WorkflowActivity $notification): bool => $notification->toDatabase($counselor)['message']
+                === 'Jamie Student requested an appointment for Discuss academic support.',
+        );
+    }
 
     public function test_students_can_request_appointments_and_only_see_their_own(): void
     {
@@ -383,7 +407,15 @@ class AppointmentTest extends TestCase
             ->assertOk()
             ->assertSee('Class Admission cannot be sent until the counseling appointment is marked done.');
         Notification::assertSentTo($teacher, ReferralAppointmentUpdate::class, fn (ReferralAppointmentUpdate $notification, array $channels): bool => $notification->toDatabase($teacher)['title'] === 'Counseling appointment proposed'
+            && $notification->toDatabase($teacher)['message'] === "Based on the referral cause for {$student->name} (Class attendance support), the counselor assigned a counseling appointment, so the result for your referral might be delayed."
+            && $notification->toDatabase($teacher)['url'] === route('teacher.referrals-sent').'#referral-'.$referral->id
             && in_array('mail', $channels, true)
+        );
+        Notification::assertSentTo(
+            $student,
+            ReferralAppointmentUpdate::class,
+            fn (ReferralAppointmentUpdate $notification): bool => $notification->toDatabase($student)['message']
+                === "Guidance Counselor assigned an appointment for you on {$appointment->scheduled_at->format('M j, Y g:i A')} about Class attendance support.",
         );
 
         $this->actingAs($student)
@@ -439,6 +471,7 @@ class AppointmentTest extends TestCase
             'proposed',
             'Notification Student',
             now()->addDays(2)->format('M j, Y g:i A'),
+            'Class attendance support',
             1,
             1,
         ));

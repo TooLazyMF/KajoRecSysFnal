@@ -260,6 +260,35 @@ class SlipCatalog
     }
 
     /**
+     * @param  array<string, mixed>  $data
+     */
+    public static function referralCauseText(array $data): string
+    {
+        $otherReason = $data['other_reason'] ?? null;
+        $labels = [
+            'class_attendance' => 'Class Attendance',
+            'psychological_testing' => 'Psychological Testing',
+            'student_housing' => 'Student Housing (Dormitory)',
+            'academic_deficiencies' => 'Academic Deficiencies',
+            'scholarship_grant_assistance' => 'Scholarship/Grant Assistance',
+            'student_employment' => 'Student Employment (SA/SPS)',
+            'other' => is_string($otherReason) && filled($otherReason)
+                ? 'Other: '.$otherReason
+                : 'Other',
+        ];
+        $reasons = array_filter(
+            array_map(
+                fn ($reason): ?string => is_string($reason) ? $reason : null,
+                (array) ($data['referral_reasons'] ?? []),
+            ),
+        );
+
+        return collect($reasons)
+            ->map(fn (string $reason): string => $labels[$reason] ?? str($reason)->replace('_', ' ')->title()->toString())
+            ->implode(', ') ?: 'Not specified';
+    }
+
+    /**
      * @return array<string, array{title: string, pdf: string, repeat_y?: list<float>, groups: list<array{title: string, fields: list<array<string, mixed>>}>}>
      */
     public static function studentRequestForms(): array
