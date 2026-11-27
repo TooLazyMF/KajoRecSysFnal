@@ -56,6 +56,28 @@ class NotificationsTest extends TestCase
             ->assertSee('You have no notifications.');
     }
 
+    public function test_native_notification_setup_uses_a_modal_on_the_notifications_page(): void
+    {
+        config(['webpush.vapid.public_key' => 'test-public-key']);
+        $student = User::factory()->create(['role' => 'student']);
+
+        $this->actingAs($student)
+            ->get(route('notifications.index'))
+            ->assertOk()
+            ->assertSee('data-push-dialog', false)
+            ->assertSee('data-push-enable', false)
+            ->assertSee('Enable native notifications')
+            ->assertDontSee('Registration failed');
+
+        $counselor = User::factory()->create(['role' => 'guidance_counselor']);
+        $this->actingAs($counselor)
+            ->get(route('guidance.dashboard'))
+            ->assertOk()
+            ->assertSee('KajoRec')
+            ->assertDontSee('data-push-notifications', false)
+            ->assertDontSee('Laravel');
+    }
+
     public function test_dashboard_notifications_are_emailed_to_users_with_registered_addresses(): void
     {
         Notification::fake();

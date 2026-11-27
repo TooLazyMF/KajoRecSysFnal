@@ -20,6 +20,24 @@
                 </p>
             </header>
 
+            <section aria-labelledby="student-quick-actions" class="space-y-3">
+                <h2 id="student-quick-actions" class="text-lg font-bold text-slate-800 dark:text-zinc-100">Quick Actions</h2>
+                <nav aria-label="Student quick actions" class="-mx-5 flex snap-x gap-3 overflow-x-auto px-5 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0">
+                    <a href="{{ route('appointments.index') }}" class="min-w-[15rem] snap-start rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm transition hover:border-emerald-400 hover:shadow-md dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-emerald-700 sm:min-w-0">
+                        <span class="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Appointments</span>
+                        <span class="mt-1 block text-xs text-slate-500 dark:text-zinc-400">Request or review a counseling appointment.</span>
+                    </a>
+                    <a href="{{ route('student.dashboard').'#request-forms' }}" class="min-w-[15rem] snap-start rounded-2xl border border-sky-200 bg-white p-4 shadow-sm transition hover:border-sky-400 hover:shadow-md dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-sky-700 sm:min-w-0">
+                        <span class="text-sm font-semibold text-sky-800 dark:text-sky-300">Request a Form</span>
+                        <span class="mt-1 block text-xs text-slate-500 dark:text-zinc-400">Ask Guidance for a form to complete.</span>
+                    </a>
+                    <a href="{{ route('assigned-slips.index') }}" class="min-w-[15rem] snap-start rounded-2xl border border-amber-200 bg-white p-4 shadow-sm transition hover:border-amber-400 hover:shadow-md dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-amber-700 sm:min-w-0">
+                        <span class="text-sm font-semibold text-amber-800 dark:text-amber-300">Assigned Slips</span>
+                        <span class="mt-1 block text-xs text-slate-500 dark:text-zinc-400">Open and submit assigned forms.</span>
+                    </a>
+                </nav>
+            </section>
+
             <section>
                 <h2 class="mb-4 text-lg font-bold text-slate-800 dark:text-zinc-100">Activities</h2>
                 <div class="grid gap-4 sm:grid-cols-3">

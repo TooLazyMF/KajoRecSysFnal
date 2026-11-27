@@ -54,10 +54,10 @@ class DashboardTest extends TestCase
             ->assertOk()
             ->assertSee('Welcome to KAJOREC')
             ->assertSee('Generate monthly report')
-            ->assertSee('sm:hidden', false)
-            ->assertSee('grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5', false)
-            ->assertSee('p-2 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-md sm:p-4', false)
-            ->assertSee('name="teacher_file"', false)
+            ->assertSee('rounded-3xl border border-emerald-200 bg-gradient-to-r', false)
+            ->assertSee('flex snap-x gap-3 overflow-x-auto pb-2 sm:grid', false)
+            ->assertSee('Guidance quick actions')
+            ->assertSee('Manage Users')
             ->assertSee('src="/guidance/monthly-report?embedded=1"', false);
 
         $this->get(route('guidance.reports.monthly'))

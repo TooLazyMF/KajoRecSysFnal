@@ -1,32 +1,31 @@
 <x-layouts::app :title="__('Guidance Dashboard')">
     <main class="min-h-screen bg-[#f6f5f1] p-5 text-slate-900 dark:bg-[#111712] dark:text-zinc-100 sm:p-6 lg:p-8">
         <div class="mx-auto flex w-full max-w-7xl flex-col gap-6">
-            <div class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
-                <header class="col-span-full hidden rounded-2xl bg-[#09ba44] p-8 text-[#092010] shadow-lg dark:bg-[#20783e] dark:text-white sm:block">
+            <div class="flex flex-col gap-5">
+                <header class="rounded-3xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-green-50 to-lime-50 p-5 shadow-[0_14px_28px_rgba(15,163,68,0.08)] dark:border-emerald-800 dark:from-zinc-900 dark:via-zinc-900 dark:to-emerald-950">
                     <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                         <div>
-                            <p class="text-sm font-medium opacity-80">Guidance Office</p>
-                            <h1 class="mt-1 text-3xl font-bold">Welcome to KAJOREC</h1>
-                            <p class="mt-2 opacity-90">Guidance Office Record Management and Appointment System</p>
+                            <p class="mb-2 inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">Guidance Office</p>
+                            <h1 class="text-2xl font-extrabold text-[#28643a] dark:text-[#91dfa6]">Guidance Dashboard</h1>
+                            <p class="mt-2 text-sm text-slate-600 dark:text-zinc-300">Guidance Office Record Management and Appointment System</p>
                         </div>
-                        <div class="text-left md:text-right">
-                            <p class="text-sm opacity-80">{{ now()->format('l') }}</p>
-                            <p class="text-xl font-semibold">{{ now()->format('F d, Y') }}</p>
-                            <button type="button" onclick="document.getElementById('monthly-report-modal').showModal()" class="mt-4 hidden items-center rounded-lg bg-white/90 px-4 py-2 text-sm font-semibold text-green-800 shadow-sm transition hover:bg-white dark:bg-zinc-900/90 dark:text-green-300 dark:hover:bg-zinc-900 sm:inline-flex">
+                        <div class="flex flex-col items-start gap-2 sm:flex-row sm:items-center md:flex-col md:items-end">
+                            <p class="text-sm text-slate-600 dark:text-zinc-300">{{ now()->format('l, F d, Y') }}</p>
+                            <button type="button" onclick="document.getElementById('monthly-report-modal').showModal()" class="inline-flex items-center rounded-lg bg-[#28643a] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1e4d2c] dark:bg-[#20783e] dark:hover:bg-[#28894a]">
                                 Generate monthly report
                             </button>
                         </div>
                     </div>
                 </header>
 
-            <section class="contents" aria-label="Guidance statistics">
+            <section aria-label="Guidance statistics" class="flex snap-x gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-5">
                 @php
                     $statCardStyles = [
-                        'bg-emerald-50 border-emerald-200 hover:border-emerald-400',
-                        'bg-sky-50 border-sky-200 hover:border-sky-400',
-                        'bg-amber-50 border-amber-200 hover:border-amber-400',
-                        'bg-orange-50 border-orange-200 hover:border-orange-400',
-                        'bg-violet-50 border-violet-200 hover:border-violet-400',
+                        'bg-gradient-to-br from-emerald-50 to-white border-emerald-200 hover:border-emerald-400',
+                        'bg-gradient-to-br from-sky-50 to-white border-sky-200 hover:border-sky-400',
+                        'bg-gradient-to-br from-amber-50 to-white border-amber-200 hover:border-amber-400',
+                        'bg-gradient-to-br from-orange-50 to-white border-orange-200 hover:border-orange-400',
+                        'bg-gradient-to-br from-violet-50 to-white border-violet-200 hover:border-violet-400',
                     ];
                     $statIconStyles = [
                         'bg-emerald-100 text-emerald-700',
@@ -43,19 +42,37 @@
                     ['Missed / Done', $missedDoneAppointmentsCount, 'Finished or missed', 'bg-orange-100', '✓', 'miss-done-appointments'],
                     ['Referrals Missing Document Details', $activeReferralsCount, 'Missing Document Code, Revision Number, or Control No.', 'bg-purple-100', '↗', 'active-referrals'],
                 ] as [$label, $count, $description, $iconBg, $icon, $modalKey])
-                    <button type="button" onclick="document.getElementById('{{ $modalKey }}-modal').showModal()" class="min-w-0 w-full rounded-2xl border p-2 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-md sm:p-4 {{ $statCardStyles[$loop->index] }} dark:border-neutral-700 dark:bg-neutral-900 dark:hover:border-green-700">
+                    <button type="button" onclick="document.getElementById('{{ $modalKey }}-modal').showModal()" class="min-w-[13rem] snap-start rounded-2xl border p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-md sm:min-w-0 {{ $statCardStyles[$loop->index] }} dark:border-zinc-700 dark:from-zinc-900 dark:to-zinc-900 dark:hover:border-green-700">
                         <div class="flex items-center justify-between">
                             <div class="min-w-0">
-                                <p class="break-words text-[10px] font-medium leading-3 text-neutral-500 dark:text-neutral-400 sm:text-xs sm:leading-4">{{ $label }}</p>
-                                <p class="mt-1 text-lg font-bold text-neutral-900 dark:text-white sm:text-2xl">{{ $count }}</p>
+                                <p class="break-words text-sm font-medium leading-4 text-neutral-500 dark:text-neutral-400">{{ $label }}</p>
+                                <p class="mt-2 text-3xl font-bold text-neutral-900 dark:text-white">{{ $count }}</p>
                             </div>
-                            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg {{ $statIconStyles[$loop->index] }} text-sm font-semibold sm:h-10 sm:w-10 sm:rounded-xl sm:text-lg dark:bg-zinc-800 dark:text-emerald-300">{{ $icon }}</span>
+                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl {{ $statIconStyles[$loop->index] }} text-lg font-semibold dark:bg-zinc-800 dark:text-emerald-300">{{ $icon }}</span>
                         </div>
-                        <p class="mt-2 hidden text-[11px] leading-4 text-neutral-500 sm:block">{{ $description }}</p>
+                        <p class="mt-4 text-xs leading-4 text-neutral-500 dark:text-zinc-400">{{ $description }}</p>
                     </button>
                 @endforeach
             </section>
             </div>
+
+            <section aria-labelledby="guidance-quick-actions" class="space-y-3">
+                <h2 id="guidance-quick-actions" class="text-lg font-bold text-slate-800 dark:text-zinc-100">Quick Actions</h2>
+                <nav aria-label="Guidance quick actions" class="-mx-5 flex snap-x gap-3 overflow-x-auto px-5 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3">
+                    <a href="{{ route('appointments.index') }}" class="min-w-[15rem] snap-start rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm transition hover:border-emerald-400 hover:shadow-md dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-emerald-700 sm:min-w-0">
+                        <span class="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Appointments</span>
+                        <span class="mt-1 block text-xs text-slate-500 dark:text-zinc-400">Review and manage appointment requests.</span>
+                    </a>
+                    <a href="{{ route('guidance.slip-review') }}" class="min-w-[15rem] snap-start rounded-2xl border border-sky-200 bg-white p-4 shadow-sm transition hover:border-sky-400 hover:shadow-md dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-sky-700 sm:min-w-0">
+                        <span class="text-sm font-semibold text-sky-800 dark:text-sky-300">Slip Approvals</span>
+                        <span class="mt-1 block text-xs text-slate-500 dark:text-zinc-400">Review forms submitted to Guidance.</span>
+                    </a>
+                    <a href="{{ route('admin.users.index') }}" class="min-w-[15rem] snap-start rounded-2xl border border-amber-200 bg-white p-4 shadow-sm transition hover:border-amber-400 hover:shadow-md dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-amber-700 sm:min-w-0">
+                        <span class="text-sm font-semibold text-amber-800 dark:text-amber-300">Manage Users</span>
+                        <span class="mt-1 block text-xs text-slate-500 dark:text-zinc-400">Open student and staff records.</span>
+                    </a>
+                </nav>
+            </section>
 
             <section class="flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm dark:border-emerald-900/60 dark:bg-emerald-950/20 sm:flex-row sm:items-center sm:justify-between">
                 <div>

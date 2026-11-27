@@ -1958,6 +1958,10 @@ class SlipSubmissionController extends Controller
             throw $exception;
         }
 
+        if ($slip === 'qf-bo-oss-04-client-information-form') {
+            return redirect()->route('slips.submissions.show', $submission);
+        }
+
         $submissionUrl = route('slips.submissions.show', $submission);
         $isStudentFormRequest = $request->user()->role === 'student'
             && $assignment !== null

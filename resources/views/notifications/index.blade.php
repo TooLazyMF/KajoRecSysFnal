@@ -1,9 +1,12 @@
 <x-layouts::app :title="__('Notifications')">
     <main class="min-h-screen bg-[#f6f5f1] p-5 text-slate-900 dark:bg-[#111712] dark:text-zinc-100 sm:p-6 lg:p-8">
         <div class="mx-auto w-full max-w-4xl space-y-6">
-            <header>
-                <h1 class="text-3xl font-bold">Notifications</h1>
-                <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400">Unread updates for your account. Opening an update marks it as read and removes it from this list.</p>
+            <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold">Notifications</h1>
+                    <p class="mt-2 text-sm text-neutral-500 dark:text-neutral-400">Unread updates for your account. Opening an update marks it as read and removes it from this list.</p>
+                </div>
+                <x-push-notification-button />
             </header>
 
             @if (session('status'))

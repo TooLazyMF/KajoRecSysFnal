@@ -238,10 +238,10 @@
                 </div>
 
 
-                <div class="space-y-3 p-6">
+                <div class="flex gap-3 overflow-x-auto p-4 lg:flex-col lg:overflow-visible lg:p-6">
 
                     <a href="#"
-                       class="flex items-center gap-4 rounded-xl border border-neutral-200 p-4 transition hover:border-green-500 hover:bg-green-50 dark:border-neutral-700 dark:hover:bg-green-950">
+                       class="flex min-w-[15rem] shrink-0 items-center gap-4 rounded-xl border border-neutral-200 p-4 transition hover:border-green-500 hover:bg-green-50 dark:border-neutral-700 dark:hover:bg-green-950 lg:min-w-0 lg:shrink">
 
                         <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
                             👨‍🎓
@@ -261,7 +261,7 @@
 
 
                     <a href="#"
-                       class="flex items-center gap-4 rounded-xl border border-neutral-200 p-4 transition hover:border-blue-500 hover:bg-blue-50 dark:border-neutral-700 dark:hover:bg-blue-950">
+                       class="flex min-w-[15rem] shrink-0 items-center gap-4 rounded-xl border border-neutral-200 p-4 transition hover:border-blue-500 hover:bg-blue-50 dark:border-neutral-700 dark:hover:bg-blue-950 lg:min-w-0 lg:shrink">
 
                         <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
                             📅
@@ -281,7 +281,7 @@
 
 
                     <a href="#"
-                       class="flex items-center gap-4 rounded-xl border border-neutral-200 p-4 transition hover:border-purple-500 hover:bg-purple-50 dark:border-neutral-700 dark:hover:bg-purple-950">
+                       class="flex min-w-[15rem] shrink-0 items-center gap-4 rounded-xl border border-neutral-200 p-4 transition hover:border-purple-500 hover:bg-purple-50 dark:border-neutral-700 dark:hover:bg-purple-950 lg:min-w-0 lg:shrink">
 
                         <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
                             🔄

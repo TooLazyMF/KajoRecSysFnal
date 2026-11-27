@@ -23,13 +23,6 @@
             <!-- NAVIGATION -->
             <nav class="flex items-center gap-8">
 
-                <a
-                    href="{{ url('/') }}"
-                    class="whitespace-nowrap text-sm font-medium text-gray-800 transition hover:text-[#176b3a] lg:hidden"
-                >
-                    Home
-                </a>
-
                 <button
                     type="button"
                     data-show-panel="about"

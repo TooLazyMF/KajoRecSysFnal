@@ -46,8 +46,10 @@ class SlipSubmissionTest extends TestCase
 
     public function test_client_information_form_prefills_and_locks_imported_student_details(): void
     {
+        Notification::fake();
         Storage::fake('local');
         $teacher = User::factory()->create(['role' => 'teacher']);
+        $counselor = User::factory()->create(['role' => 'guidance_counselor']);
         $student = User::factory()->create([
             'name' => 'Ada Byron',
             'id_number' => 'CIF-1001',
@@ -109,6 +111,10 @@ class SlipSubmissionTest extends TestCase
         $this->actingAs($student)
             ->post(route('assigned-slips.submit', $assignment), ['details' => $details])
             ->assertSessionHasNoErrors();
+
+        Notification::assertNotSentTo($student, WorkflowActivity::class);
+        Notification::assertNotSentTo($teacher, WorkflowActivity::class);
+        Notification::assertNotSentTo($counselor, WorkflowActivity::class);
 
         $submission = SlipSubmission::query()->where('user_id', $student->id)->firstOrFail();
         $this->assertSame('Ada', $submission->data['first_name']);
