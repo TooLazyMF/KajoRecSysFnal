@@ -8,7 +8,6 @@ use App\Support\SensitiveLookup;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class AccountSessionLogger
 {
@@ -20,13 +19,10 @@ class AccountSessionLogger
 
     private const LAST_DATABASE_TOUCH_SESSION_KEY = 'account_last_database_touch_at';
 
-    private const PENDING_LOCATION_SESSION_KEY = 'account_login_location';
-
     public function start(Request $request, User $user): AccountSessionLog
     {
         $sessionHash = SensitiveLookup::hash('session_id', $request->session()->getId())
             ?? throw new \LogicException('A session ID hash could not be generated.');
-        $location = $request->session()->pull(self::PENDING_LOCATION_SESSION_KEY, []);
         $now = CarbonImmutable::now();
 
         $log = AccountSessionLog::query()->firstOrCreate(
@@ -34,8 +30,6 @@ class AccountSessionLogger
             [
                 'user_id' => $user->id,
                 'device_name' => $this->deviceName($request->userAgent()),
-                'latitude' => $location['latitude'] ?? null,
-                'longitude' => $location['longitude'] ?? null,
                 'logged_in_at' => $now,
                 'last_activity_at' => $now,
             ],
@@ -143,56 +137,6 @@ class AccountSessionLogger
         }
 
         $query->update(['logged_out_at' => $loggedOutAt ?? CarbonImmutable::now()]);
-    }
-
-    public function captureLoginLocation(Request $request): void
-    {
-        if (! $request->boolean('share_location')) {
-            $request->session()->forget(self::PENDING_LOCATION_SESSION_KEY);
-
-            throw ValidationException::withMessages([
-                'share_location' => 'Location sharing is required to sign in and record this device.',
-            ]);
-        }
-
-        $latitude = $request->input('login_latitude');
-        $longitude = $request->input('login_longitude');
-
-        if (! is_numeric($latitude) || ! is_numeric($longitude)) {
-            $request->session()->forget(self::PENDING_LOCATION_SESSION_KEY);
-
-            throw ValidationException::withMessages([
-                'share_location' => 'Allow location access to sign in and record this device.',
-            ]);
-        }
-
-        $latitude = (float) $latitude;
-        $longitude = (float) $longitude;
-        if ($latitude < -90 || $latitude > 90 || $longitude < -180 || $longitude > 180) {
-            $request->session()->forget(self::PENDING_LOCATION_SESSION_KEY);
-
-            throw ValidationException::withMessages([
-                'share_location' => 'A valid device location is required to sign in.',
-            ]);
-        }
-
-        $request->session()->put(self::PENDING_LOCATION_SESSION_KEY, [
-            'latitude' => $latitude,
-            'longitude' => $longitude,
-        ]);
-    }
-
-    public function hasPendingLoginLocation(Request $request): bool
-    {
-        $location = $request->session()->get(self::PENDING_LOCATION_SESSION_KEY);
-
-        return is_array($location)
-            && isset($location['latitude'], $location['longitude']);
-    }
-
-    public function clearPendingLoginLocation(Request $request): void
-    {
-        $request->session()->forget(self::PENDING_LOCATION_SESSION_KEY);
     }
 
     private function deviceName(?string $userAgent): string

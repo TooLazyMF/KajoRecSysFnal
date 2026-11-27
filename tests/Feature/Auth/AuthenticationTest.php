@@ -23,10 +23,9 @@ class AuthenticationTest extends TestCase
             ->assertSee('Email')
             ->assertDontSee('Email address or account name')
             ->assertSee('Sign in with a passkey')
-            ->assertSee('name="share_location"', false)
-            ->assertDontSee('id="share-login-location"', false)
-            ->assertSee('name="login_latitude"', false)
-            ->assertSee('name="login_longitude"', false)
+            ->assertDontSee('share_location')
+            ->assertDontSee('login_latitude')
+            ->assertDontSee('login_longitude')
             ->assertSee('data-loading-spinner', false)
             ->assertSee('About Us')
             ->assertSee('What is KajoRec?')
@@ -51,9 +50,6 @@ class AuthenticationTest extends TestCase
         $response = $this->post(route('login.store'), [
             'email' => $user->email,
             'password' => 'password',
-            'share_location' => '1',
-            'login_latitude' => '14.5995',
-            'login_longitude' => '120.9842',
         ]);
 
         $response
@@ -70,9 +66,6 @@ class AuthenticationTest extends TestCase
         $response = $this->post(route('login.store'), [
             'email' => $user->email,
             'password' => 'wrong-password',
-            'share_location' => '1',
-            'login_latitude' => '14.5995',
-            'login_longitude' => '120.9842',
         ]);
 
         $response->assertSessionHasErrorsIn('email');
@@ -103,9 +96,6 @@ class AuthenticationTest extends TestCase
         $response = $this->post(route('login.store'), [
             'email' => $user->email,
             'password' => 'password',
-            'share_location' => '1',
-            'login_latitude' => '14.5995',
-            'login_longitude' => '120.9842',
         ]);
 
         $response->assertRedirect(route('two-factor.login'));

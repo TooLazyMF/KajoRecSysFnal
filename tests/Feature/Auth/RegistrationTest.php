@@ -11,6 +11,7 @@ use App\Support\SensitiveLookup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\AnonymousNotifiable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Fortify\Features;
 use Symfony\Component\Mailer\Exception\TransportException;
@@ -53,7 +54,8 @@ class RegistrationTest extends TestCase
             ->assertSee(route('register.store'), false)
             ->assertSee('data-auth-view="login"', false)
             ->assertSee('Sign in with a passkey')
-            ->assertSee('name="share_location"', false)
+            ->assertDontSee('share_location')
+            ->assertDontSee('navigator.geolocation')
             ->assertSee('data-contact-content', false)
             ->assertSee('data-about-content', false)
             ->assertSee('data-welcome-content', false)
@@ -274,9 +276,6 @@ class RegistrationTest extends TestCase
         $this->from(route('home'))
             ->post(route('verification.otp.verify'), [
                 'otp' => $code,
-                'share_location' => '1',
-                'login_latitude' => '14.5995',
-                'login_longitude' => '120.9842',
             ])
             ->assertRedirect(route('student.dashboard', absolute: false).'?verified=1');
 
@@ -306,9 +305,6 @@ class RegistrationTest extends TestCase
         $this->from(route('home'))
             ->post(route('verification.otp.verify'), [
                 'otp' => $invalidCode,
-                'share_location' => '1',
-                'login_latitude' => '14.5995',
-                'login_longitude' => '120.9842',
             ])
             ->assertRedirect(route('home'))
             ->assertSessionHasErrors('otp');
@@ -319,44 +315,31 @@ class RegistrationTest extends TestCase
         $this->assertDatabaseMissing('users', ['email_lookup_hash' => SensitiveLookup::hash('email', 'verify-later@example.com')]);
     }
 
-    public function test_registration_activation_requires_location_without_consuming_the_code(): void
+    public function test_registration_activation_does_not_require_location_data(): void
     {
         Notification::fake();
-        $this->createStudentReference('1005', 'Location Required', 'female');
+        $this->createStudentReference('1005', 'No Location Required', 'female');
 
         $this->post(route('register.store'), [
-            'first_name' => 'Location',
+            'first_name' => 'No Location',
             'last_name' => 'Required',
             'id_number' => '1005',
             'gender' => 'female',
-            'email' => 'location-required@example.com',
+            'email' => 'no-location-required@example.com',
             'password' => 'RegistrationPass123',
             'password_confirmation' => 'RegistrationPass123',
         ])->assertRedirect(route('home', absolute: false));
 
-        $code = $this->registrationOtpCode('location-required@example.com');
+        $code = $this->registrationOtpCode('no-location-required@example.com');
         $this->from(route('home'))
             ->post(route('verification.otp.verify'), ['otp' => $code])
-            ->assertRedirect(route('home'))
-            ->assertSessionHasErrors('share_location');
-
-        $this->assertDatabaseMissing('users', [
-            'email_lookup_hash' => SensitiveLookup::hash('email', 'location-required@example.com'),
-        ]);
-
-        $this->from(route('home'))
-            ->post(route('verification.otp.verify'), [
-                'otp' => $code,
-                'share_location' => '1',
-                'login_latitude' => '14.5995',
-                'login_longitude' => '120.9842',
-            ])
             ->assertRedirect(route('student.dashboard', absolute: false).'?verified=1');
 
-        $user = User::where('email_lookup_hash', SensitiveLookup::hash('email', 'location-required@example.com'))->firstOrFail();
+        $user = User::where('email_lookup_hash', SensitiveLookup::hash('email', 'no-location-required@example.com'))->firstOrFail();
         $log = $user->accountSessionLogs()->sole();
-        $this->assertSame('14.5995', $log->latitude);
-        $this->assertSame('120.9842', $log->longitude);
+        $this->assertNotNull($log->logged_in_at);
+        $this->assertNull(DB::table('account_session_logs')->where('id', $log->id)->value('latitude'));
+        $this->assertNull(DB::table('account_session_logs')->where('id', $log->id)->value('longitude'));
     }
 
     public function test_registration_after_logout_does_not_restore_the_previous_account(): void

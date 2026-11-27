@@ -9,11 +9,14 @@ runtime does not include Composer, so deploy it as a Docker web service instead.
    **Docker** as the runtime. An existing service created with the Node runtime
    will keep using that runtime.
 3. Create a Render PostgreSQL database and set these web-service environment
-   variables:
+   variables directly in Render's **Environment** settings. Do not upload your
+   local `.env` file or paste it wholesale.
    - `APP_ENV=production`
    - `APP_DEBUG=false`
    - `APP_URL=https://<your-render-service>.onrender.com`
    - `APP_KEY=<output of php artisan key:generate --show>`
+   - `INITIAL_COUNSELOR_EMAIL=<email address for the initial counselor>`
+   - `INITIAL_COUNSELOR_PASSWORD=<unique password of at least 8 characters>`
    - `DB_CONNECTION=pgsql`
    - `DB_URL=<the database's internal connection URL>`
    - `SESSION_DRIVER=database`
@@ -27,16 +30,22 @@ runtime does not include Composer, so deploy it as a Docker web service instead.
    - `WEBPUSH_VAPID_SUBJECT=mailto:<verified-admin-email>`
    - `WEBPUSH_VAPID_PUBLIC_KEY=<VAPID public key>`
    - `WEBPUSH_VAPID_PRIVATE_KEY=<VAPID private key>`
-4. Deploy. The container installs PHP dependencies with Composer, builds the
-   frontend assets, runs database migrations, seeds the initial guidance
-   counselor if one does not already exist, and starts Laravel on Render's
-   assigned port. No service shell is needed for this setup.
+4. Deploy the web service. The container installs PHP dependencies with
+   Composer, builds the frontend assets, runs database migrations, seeds the
+   initial guidance counselor if one does not already exist, and starts Laravel
+   on Render's assigned port. Keep the counselor password private and change
+   it after the first login.
 
    If no counselor account exists, sign in with username `Administrator` and
-   password `Admin`. The account requires a new name, email address, and
-   password before it can access the system; verify the new email to continue.
-   Existing counselor accounts are preserved.
-5. Import the complete student list from the guidance dashboard before enabling
+   the password configured above. The account requires a new name, email
+   address, and password before it can access the system; verify the new email
+   to continue. Existing counselor accounts are preserved.
+5. Create a Render **Cron Job** from the same repository and branch, using the
+   Docker runtime. Set its schedule to `* * * * *` and its Docker command to
+   `php artisan schedule:run`. Copy the web service's required environment
+   variables to the Cron Job. This runs scheduled tasks, including the
+   one-hour appointment reminders and overdue appointment notifications.
+6. Import the complete student list from the guidance dashboard before enabling
    student registration or teacher account requests. Teachers verify their email
    and submit an ID photo for counselor approval; they do not need to be imported
    into a teacher roster. Existing student roster rows are preserved during

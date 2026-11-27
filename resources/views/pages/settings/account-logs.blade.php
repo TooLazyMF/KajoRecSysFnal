@@ -8,7 +8,7 @@
         >
             <div class="space-y-5">
                 <p class="text-sm text-zinc-600 dark:text-zinc-300">
-                    Logs are retained by month. Location permission is required at sign in and coordinates are stored with each device record.
+                    New logs record the device and session times only; location is no longer collected.
                     IP addresses and raw browser details are not stored. You can end an active session from here.
                 </p>
 
@@ -27,11 +27,10 @@
                 </form>
 
                 <div class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700">
-                    <table class="w-full min-w-[1120px] divide-y divide-zinc-200 text-left text-sm dark:divide-zinc-700">
+                    <table class="w-full min-w-[960px] divide-y divide-zinc-200 text-left text-sm dark:divide-zinc-700">
                         <thead class="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
                             <tr>
                                 <th scope="col" class="px-4 py-3">{{ __('Device Name') }}</th>
-                                <th scope="col" class="px-4 py-3">{{ __('Location') }}</th>
                                 <th scope="col" class="px-4 py-3">{{ __('Logged In') }}</th>
                                 <th scope="col" class="px-4 py-3">{{ __('Last Activity') }}</th>
                                 <th scope="col" class="px-4 py-3">{{ __('Logged Out') }}</th>
@@ -42,13 +41,6 @@
                             @forelse ($logs as $log)
                                 <tr>
                                     <td class="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">{{ $log->device_name }}</td>
-                                    <td class="px-4 py-3 text-zinc-600 dark:text-zinc-300">
-                                        @if ($log->latitude !== null && $log->longitude !== null)
-                                            {{ number_format((float) $log->latitude, 5) }}, {{ number_format((float) $log->longitude, 5) }}
-                                        @else
-                                            {{ __('Not shared') }}
-                                        @endif
-                                    </td>
                                     <td class="px-4 py-3 text-zinc-600 dark:text-zinc-300">{{ $log->logged_in_at->format('M d, Y h:i A') }}</td>
                                     <td class="px-4 py-3 text-zinc-600 dark:text-zinc-300">{{ $log->last_activity_at->format('M d, Y h:i A') }}</td>
                                     <td class="px-4 py-3 text-zinc-600 dark:text-zinc-300">
@@ -75,7 +67,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-4 py-8 text-center text-zinc-500 dark:text-zinc-400">
+                                    <td colspan="5" class="px-4 py-8 text-center text-zinc-500 dark:text-zinc-400">
                                         {{ __('No account logs were recorded for this month.') }}
                                     </td>
                                 </tr>

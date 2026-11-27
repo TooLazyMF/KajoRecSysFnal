@@ -12,8 +12,6 @@ use Illuminate\Support\Carbon;
  * @property int $user_id
  * @property string $session_hash
  * @property string $device_name
- * @property string|null $latitude
- * @property string|null $longitude
  * @property Carbon $logged_in_at
  * @property Carbon $last_activity_at
  * @property Carbon|null $logged_out_at
@@ -22,8 +20,6 @@ use Illuminate\Support\Carbon;
     'user_id',
     'session_hash',
     'device_name',
-    'latitude',
-    'longitude',
     'logged_in_at',
     'last_activity_at',
     'logged_out_at',
@@ -34,8 +30,6 @@ class AccountSessionLog extends Model
     {
         return [
             'device_name' => 'encrypted',
-            'latitude' => 'encrypted',
-            'longitude' => 'encrypted',
             'logged_in_at' => 'immutable_datetime',
             'last_activity_at' => 'immutable_datetime',
             'logged_out_at' => 'immutable_datetime',

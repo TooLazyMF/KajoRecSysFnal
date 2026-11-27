@@ -22,7 +22,7 @@ class AccountSessionLogTest extends TestCase
         config(['session.driver' => 'database']);
     }
 
-    public function test_successful_login_and_logout_are_recorded_with_required_browser_location(): void
+    public function test_successful_login_and_logout_are_recorded_with_device_and_timestamps(): void
     {
         $student = User::factory()->create(['role' => 'student']);
 
@@ -31,15 +31,14 @@ class AccountSessionLogTest extends TestCase
         ])->post(route('login.store'), [
             'email' => $student->email,
             'password' => 'password',
-            'share_location' => '1',
-            'login_latitude' => '14.5995',
-            'login_longitude' => '120.9842',
         ])->assertSessionHasNoErrors();
 
         $log = AccountSessionLog::query()->where('user_id', $student->id)->sole();
         $this->assertSame('Chrome on Windows', $log->device_name);
-        $this->assertSame('14.5995', $log->latitude);
-        $this->assertSame('120.9842', $log->longitude);
+        $this->assertNotNull($log->logged_in_at);
+        $this->assertNotNull($log->last_activity_at);
+        $this->assertNull(DB::table('account_session_logs')->where('id', $log->id)->value('latitude'));
+        $this->assertNull(DB::table('account_session_logs')->where('id', $log->id)->value('longitude'));
         $this->assertNull($log->logged_out_at);
         $this->assertDatabaseHas('sessions', [
             'id' => $log->session_hash,
@@ -51,42 +50,32 @@ class AccountSessionLogTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_login_requires_location_consent_and_valid_coordinates(): void
+    public function test_login_does_not_require_location_data(): void
     {
         $student = User::factory()->create(['role' => 'student']);
 
         $this->post(route('login.store'), [
             'email' => $student->email,
             'password' => 'password',
-            'login_latitude' => '14.5995',
-            'login_longitude' => '120.9842',
-        ])->assertSessionHasErrors('share_location');
+        ])->assertRedirect(route('student.dashboard', absolute: false));
 
-        $this->post(route('login.store'), [
-            'email' => $student->email,
-            'password' => 'password',
-            'share_location' => '1',
-        ])->assertSessionHasErrors('share_location');
-
-        $this->assertGuest();
-        $this->assertDatabaseMissing('account_session_logs', ['user_id' => $student->id]);
+        $this->assertAuthenticatedAs($student);
+        $this->assertDatabaseHas('account_session_logs', ['user_id' => $student->id]);
     }
 
-    public function test_landing_page_login_also_records_the_required_location(): void
+    public function test_landing_page_login_records_the_session_without_location_data(): void
     {
         $student = User::factory()->create(['role' => 'student']);
 
         $this->post(route('login.root'), [
             'email' => $student->email,
             'password' => 'password',
-            'share_location' => '1',
-            'login_latitude' => '14.5995',
-            'login_longitude' => '120.9842',
         ])->assertRedirect(route('student.dashboard', absolute: false));
 
         $log = AccountSessionLog::query()->where('user_id', $student->id)->sole();
-        $this->assertSame('14.5995', $log->latitude);
-        $this->assertSame('120.9842', $log->longitude);
+        $this->assertNotNull($log->logged_in_at);
+        $this->assertNull(DB::table('account_session_logs')->where('id', $log->id)->value('latitude'));
+        $this->assertNull(DB::table('account_session_logs')->where('id', $log->id)->value('longitude'));
     }
 
     public function test_user_can_end_another_active_device_session(): void
@@ -189,7 +178,6 @@ class AccountSessionLogTest extends TestCase
                 ->assertOk()
                 ->assertSee('Account Logs')
                 ->assertSee('Device Name')
-                ->assertSee('Location')
                 ->assertSee('Logged In')
                 ->assertSee('Last Activity')
                 ->assertSee('Logged Out')

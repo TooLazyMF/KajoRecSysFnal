@@ -15,9 +15,6 @@
 
         <form id="login-form" method="POST" action="{{ route('login.root') }}" class="flex flex-col gap-6">
             @csrf
-            <input type="hidden" name="share_location" value="1">
-            <input type="hidden" name="login_latitude" id="login-latitude">
-            <input type="hidden" name="login_longitude" id="login-longitude">
 
             <flux:input
                 id="login-email"
@@ -53,14 +50,6 @@
 
             <!-- Remember Me -->
             <flux:checkbox name="remember" :label="__('Remember me')" :checked="old('remember')" />
-
-            <p class="text-sm text-zinc-600 dark:text-zinc-300">Location permission is required to sign in and record this device. Your browser will ask permission; coordinates stay in this system and are never sent to a location provider.</p>
-            <p data-location-error role="alert" class="text-sm text-red-600 dark:text-red-400" hidden>
-                Location access is required to sign in. Allow location access in your browser and try again.
-            </p>
-            @error('share_location')
-                <p role="alert" class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-            @enderror
 
             <div class="flex items-center justify-end">
                 <flux:button variant="primary" type="submit" class="w-full" data-test="login-button" data-loading-button data-loading-label="Signing in...">
@@ -142,62 +131,23 @@
         });
 
         const loginForm = document.getElementById('login-form');
-        let locationSubmissionStarted = false;
         let loginSubmitted = false;
 
         loginForm?.addEventListener('submit', (event) => {
-            if (locationSubmissionStarted) {
+            if (loginSubmitted) {
                 event.preventDefault();
                 return;
             }
 
-            event.preventDefault();
-            locationSubmissionStarted = true;
+            loginSubmitted = true;
             const button = loginForm.querySelector('[data-loading-button]');
             const status = loginForm.querySelector('[data-submit-status]');
-            const locationError = loginForm.querySelector('[data-location-error]');
-            const label = button.querySelector('[data-button-label]');
-            locationError.hidden = true;
             button.disabled = true;
-            label.textContent = 'Getting location...';
+            button.setAttribute('aria-busy', 'true');
+            button.querySelector('[data-button-label]').textContent = button.dataset.loadingLabel;
             button.querySelector('[data-loading-spinner]').hidden = false;
-            status.textContent = 'Getting device location...';
+            status.textContent = button.dataset.loadingLabel;
             status.hidden = false;
-
-            const submitLogin = () => {
-                if (loginSubmitted) {
-                    return;
-                }
-
-                loginSubmitted = true;
-                label.textContent = button.dataset.loadingLabel;
-                status.textContent = button.dataset.loadingLabel;
-                HTMLFormElement.prototype.submit.call(loginForm);
-            };
-            const submitWithLocation = (position) => {
-                document.getElementById('login-latitude').value = position.coords.latitude;
-                document.getElementById('login-longitude').value = position.coords.longitude;
-                submitLogin();
-            };
-            const locationFailed = () => {
-                locationSubmissionStarted = false;
-                button.disabled = false;
-                label.textContent = 'Log in';
-                button.querySelector('[data-loading-spinner]').hidden = true;
-                status.hidden = true;
-                locationError.hidden = false;
-            };
-
-            if (!navigator.geolocation) {
-                locationFailed();
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition(submitWithLocation, locationFailed, {
-                enableHighAccuracy: false,
-                maximumAge: 60000,
-                timeout: 5000,
-            });
         });
     </script>
 </x-layouts::auth>

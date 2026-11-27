@@ -5,9 +5,13 @@ namespace Tests\Feature;
 use App\Models\SlipAssignment;
 use App\Models\SlipSubmission;
 use App\Models\User;
+use App\Notifications\OverdueAppointmentReminder;
+use App\Notifications\ReferralAppointmentUpdate;
 use App\Notifications\WorkflowActivity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class NotificationsTest extends TestCase
@@ -50,6 +54,72 @@ class NotificationsTest extends TestCase
             ->assertOk()
             ->assertDontSee('New update')
             ->assertSee('You have no notifications.');
+    }
+
+    public function test_dashboard_notifications_are_emailed_to_users_with_registered_addresses(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create([
+            'email' => 'notifications@example.test',
+            'role' => 'guidance_counselor',
+        ]);
+        $notifications = [
+            new WorkflowActivity(
+                'New update',
+                'The update details are ready.',
+                route('student.dashboard'),
+                'test',
+            ),
+            new ReferralAppointmentUpdate(
+                'proposed',
+                'Student Example',
+                now()->addDay()->format('M j, Y g:i A'),
+                'Academic support',
+                1,
+                1,
+            ),
+            new OverdueAppointmentReminder(
+                1,
+                $user->id,
+                'Student Example',
+                now()->subDay()->format('M j, Y g:i A'),
+            ),
+        ];
+
+        foreach ($notifications as $notification) {
+            $user->notify($notification);
+            Notification::assertSentTo(
+                $user,
+                $notification::class,
+                fn (object $sentNotification, array $channels): bool => in_array('database', $channels, true)
+                    && in_array('mail', $channels, true),
+            );
+        }
+
+        $overdue = $notifications[2];
+        $this->assertInstanceOf(MailMessage::class, $overdue->toMail($user));
+    }
+
+    public function test_overdue_appointment_reminder_is_not_emailed_without_a_registered_address(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create([
+            'email' => null,
+            'role' => 'guidance_counselor',
+        ]);
+
+        $user->notify(new OverdueAppointmentReminder(
+            1,
+            $user->id,
+            'Student Example',
+            now()->subDay()->format('M j, Y g:i A'),
+        ));
+
+        Notification::assertSentTo(
+            $user,
+            OverdueAppointmentReminder::class,
+            fn (OverdueAppointmentReminder $notification, array $channels): bool => $channels === ['database'],
+        );
     }
 
     public function test_first_counselor_view_of_a_student_form_notifies_the_student_once_and_guidance_can_send_updates(): void

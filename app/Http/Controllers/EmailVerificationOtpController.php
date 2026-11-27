@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Models\User;
-use App\Services\AccountSessionLogger;
 use App\Services\EmailOtpService;
 use App\Services\PendingRegistrationService;
 use Illuminate\Auth\Events\Verified;
@@ -84,7 +83,6 @@ class EmailVerificationOtpController extends Controller
     public function verify(
         Request $request,
         EmailOtpService $otp,
-        AccountSessionLogger $sessionLogger,
         PendingRegistrationService $pendingRegistration,
         CreateNewUser $createNewUser,
     ): RedirectResponse {
@@ -95,11 +93,7 @@ class EmailVerificationOtpController extends Controller
         $registration = $pendingRegistration->registration($request);
 
         if ($registration) {
-            $sessionLogger->captureLoginLocation($request);
-
             if (! $pendingRegistration->verify($request, $request->string('otp')->toString())) {
-                $sessionLogger->clearPendingLoginLocation($request);
-
                 return back()
                     ->withErrors(['otp' => 'The code is invalid or has expired. Request a new code and try again.'])
                     ->withInput();
@@ -110,7 +104,6 @@ class EmailVerificationOtpController extends Controller
             } catch (ValidationException $exception) {
                 $registrationInput = $pendingRegistration->formInput($request);
                 $pendingRegistration->finish($request);
-                $sessionLogger->clearPendingLoginLocation($request);
 
                 return to_route('home')
                     ->withInput($registrationInput)
@@ -125,7 +118,6 @@ class EmailVerificationOtpController extends Controller
             $pendingRegistration->finish($request);
             Auth::guard('web')->login($user);
             $request->session()->regenerate();
-            $sessionLogger->start($request, $user);
 
             return redirect()->to(route($this->dashboardRouteFor($user), absolute: false).'?verified=1');
         }

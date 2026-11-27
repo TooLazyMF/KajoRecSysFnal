@@ -104,9 +104,6 @@ class TeacherAccountRequestTest extends TestCase
         $this->post(route('login.store'), [
             'email' => 'a.teacher@example.com',
             'password' => 'TeacherPassword123',
-            'share_location' => '1',
-            'login_latitude' => '14.5995',
-            'login_longitude' => '120.9842',
         ])->assertRedirect(route('teacher.dashboard'));
         $this->assertAuthenticatedAs($teacher);
     }

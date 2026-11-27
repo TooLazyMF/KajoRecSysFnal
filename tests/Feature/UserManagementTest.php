@@ -124,9 +124,6 @@ class UserManagementTest extends TestCase
         $this->post(route('login.store'), [
             'email' => $teacher->name,
             'password' => 'TeacherPassword123',
-            'share_location' => '1',
-            'login_latitude' => '14.5995',
-            'login_longitude' => '120.9842',
         ])->assertRedirect(route('teacher.dashboard'));
         $this->assertDatabaseHas('account_session_logs', ['user_id' => $teacher->id]);
 
@@ -168,9 +165,6 @@ class UserManagementTest extends TestCase
         $this->post(route('login.store'), [
             'email' => $teacher->name,
             'password' => 'initial-password',
-            'share_location' => '1',
-            'login_latitude' => '14.5995',
-            'login_longitude' => '120.9842',
         ])->assertRedirect(route('teacher.profile.edit'));
 
         $this->assertAuthenticatedAs($teacher);
@@ -251,9 +245,6 @@ class UserManagementTest extends TestCase
         $this->post(route('login.store'), [
             'email' => $teacher->name,
             'password' => 'TeacherPassword123',
-            'share_location' => '1',
-            'login_latitude' => '14.5995',
-            'login_longitude' => '120.9842',
         ])->assertRedirect(route('teacher.dashboard'));
 
         $this->assertAuthenticatedAs($teacher);
@@ -279,9 +270,6 @@ class UserManagementTest extends TestCase
         $this->post(route('login'), [
             'email' => $user->email,
             'password' => 'password',
-            'share_location' => '1',
-            'login_latitude' => '14.5995',
-            'login_longitude' => '120.9842',
         ])->assertSessionHasErrors('email');
 
         $this->actingAs($user)

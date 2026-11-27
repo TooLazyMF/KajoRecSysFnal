@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class OverdueAppointmentReminder extends Notification
@@ -32,7 +33,7 @@ class OverdueAppointmentReminder extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return filled($notifiable->email) ? ['database', 'mail'] : ['database'];
     }
 
     /**
@@ -41,10 +42,29 @@ class OverdueAppointmentReminder extends Notification
     public function toDatabase(object $notifiable): array
     {
         return [
-            'title' => 'Overdue appointment needs follow-up',
-            'message' => "The appointment with {$this->studentName} scheduled for {$this->scheduledAt} has passed and is still awaiting completion. Mark it as done or missed.",
+            'title' => $this->title(),
+            'message' => $this->message(),
             'url' => route('appointments.index'),
             'appointment_id' => $this->appointmentId,
         ];
+    }
+
+    public function toMail(object $notifiable): MailMessage
+    {
+        return (new MailMessage)
+            ->subject($this->title())
+            ->greeting('Hello '.$notifiable->name)
+            ->line($this->message())
+            ->action('View appointments', route('appointments.index'));
+    }
+
+    private function title(): string
+    {
+        return 'Overdue appointment needs follow-up';
+    }
+
+    private function message(): string
+    {
+        return "The appointment with {$this->studentName} scheduled for {$this->scheduledAt} has passed and is still awaiting completion. Mark it as done or missed.";
     }
 }

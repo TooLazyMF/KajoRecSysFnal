@@ -426,15 +426,6 @@
             accent-color: var(--primary);
         }
 
-        .location-share {
-            display: flex;
-            align-items: flex-start;
-            gap: 8px;
-            color: var(--muted);
-            font-size: 12px;
-            line-height: 1.5;
-        }
-
         .text-button {
             padding: 0;
             border: 0;
@@ -981,9 +972,6 @@
                 <form id="landing-login-form" method="POST" action="{{ route('login.root') }}" class="auth-form">
                     @csrf
                     <input type="hidden" name="_welcome_panel" value="login">
-                    <input type="hidden" name="share_location" value="1">
-                    <input type="hidden" name="login_latitude" id="login-latitude">
-                    <input type="hidden" name="login_longitude" id="login-longitude">
 
                     <div class="form-fields">
                         <label class="field" for="login-email">
@@ -1037,14 +1025,6 @@
                                 <button class="text-button" type="button" data-show-panel="forgot">Forgot password?</button>
                             @endif
                         </div>
-
-                        <p class="location-share">Location permission is required to sign in and record this device. Your browser will ask permission; coordinates stay in this system and are never sent to a location provider.</p>
-                        <p data-location-error role="alert" class="field-error" hidden>
-                            Location access is required to sign in. Allow location access in your browser and try again.
-                        </p>
-                        @error('share_location')
-                            <span class="field-error" role="alert">{{ $message }}</span>
-                        @enderror
 
                         <button class="submit-button" type="submit" data-loading-button data-loading-label="Signing in...">
                             <span data-button-label>Sign in</span>
@@ -1454,15 +1434,6 @@
                         required
                     >
                 </label>
-                <input type="hidden" name="login_latitude" id="registration-login-latitude">
-                <input type="hidden" name="login_longitude" id="registration-login-longitude">
-                <label class="location-share">
-                    <input id="registration-share-location" name="share_location" type="checkbox" value="1" required @checked(old('share_location'))>
-                    <span>Location sharing is required to activate your account and record this device. Your browser will ask permission; coordinates stay in this system.</span>
-                </label>
-                <p data-registration-location-error role="alert" class="field-error" hidden>
-                    Location access is required to activate your account. Allow location access in your browser and try again.
-                </p>
                 <button type="submit" class="submit-button" data-registration-loading-button>Verify email</button>
                 <span data-registration-submit-status class="loading-status" role="status" aria-live="polite" hidden></span>
             </form>
@@ -1635,64 +1606,16 @@
         });
 
         const loginForm = authPage.querySelector('#landing-login-form');
-        let locationSubmissionStarted = false;
         let loginSubmitted = false;
 
         loginForm.addEventListener('submit', (event) => {
-            if (locationSubmissionStarted) {
+            if (loginSubmitted) {
                 event.preventDefault();
                 return;
             }
 
-            event.preventDefault();
-            locationSubmissionStarted = true;
-            const button = loginForm.querySelector('[data-loading-button]');
-            const status = loginForm.querySelector('[data-submit-status]');
-            const locationError = loginForm.querySelector('[data-location-error]');
-            const label = button.querySelector('[data-button-label]');
-            locationError.hidden = true;
-            button.disabled = true;
-            button.setAttribute('aria-busy', 'true');
-            label.textContent = 'Getting location...';
-            button.querySelector('[data-loading-spinner]').hidden = false;
-            status.textContent = 'Getting device location...';
-            status.hidden = false;
-
-            const submitLogin = () => {
-                if (loginSubmitted) {
-                    return;
-                }
-
-                loginSubmitted = true;
-                label.textContent = button.dataset.loadingLabel;
-                status.textContent = button.dataset.loadingLabel;
-                HTMLFormElement.prototype.submit.call(loginForm);
-            };
-            const submitWithLocation = (position) => {
-                document.getElementById('login-latitude').value = position.coords.latitude;
-                document.getElementById('login-longitude').value = position.coords.longitude;
-                submitLogin();
-            };
-            const locationFailed = () => {
-                locationSubmissionStarted = false;
-                button.disabled = false;
-                button.removeAttribute('aria-busy');
-                label.textContent = 'Sign in';
-                button.querySelector('[data-loading-spinner]').hidden = true;
-                status.hidden = true;
-                locationError.hidden = false;
-            };
-
-            if (!navigator.geolocation) {
-                locationFailed();
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition(submitWithLocation, locationFailed, {
-                enableHighAccuracy: false,
-                maximumAge: 60000,
-                timeout: 5000,
-            });
+            loginSubmitted = true;
+            showFormLoading(loginForm);
         });
 
         function showFormLoading(form) {
@@ -1751,63 +1674,21 @@
         }
 
         const registrationVerificationForm = document.getElementById('registration-verification-form');
-        const registrationShareLocation = document.getElementById('registration-share-location');
-        let registrationLocationSubmissionStarted = false;
         let registrationVerificationSubmitted = false;
 
         registrationVerificationForm?.addEventListener('submit', (event) => {
-            if (registrationLocationSubmissionStarted) {
+            if (registrationVerificationSubmitted) {
                 event.preventDefault();
                 return;
             }
 
-            if (!registrationShareLocation?.checked) {
-                return;
-            }
-
-            event.preventDefault();
-            registrationLocationSubmissionStarted = true;
+            registrationVerificationSubmitted = true;
             const button = registrationVerificationForm.querySelector('[data-registration-loading-button]');
             const status = registrationVerificationForm.querySelector('[data-registration-submit-status]');
-            const locationError = registrationVerificationForm.querySelector('[data-registration-location-error]');
             button.disabled = true;
-            button.textContent = 'Getting location...';
-            status.textContent = 'Getting device location...';
+            button.textContent = 'Verifying email...';
+            status.textContent = 'Verifying email...';
             status.hidden = false;
-            locationError.hidden = true;
-
-            const submitVerification = () => {
-                if (registrationVerificationSubmitted) {
-                    return;
-                }
-
-                registrationVerificationSubmitted = true;
-                button.textContent = 'Verifying email...';
-                status.textContent = 'Verifying email...';
-                HTMLFormElement.prototype.submit.call(registrationVerificationForm);
-            };
-            const locationFailed = () => {
-                registrationLocationSubmissionStarted = false;
-                button.disabled = false;
-                button.textContent = 'Verify email';
-                status.hidden = true;
-                locationError.hidden = false;
-            };
-
-            if (!navigator.geolocation) {
-                locationFailed();
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition((position) => {
-                document.getElementById('registration-login-latitude').value = position.coords.latitude;
-                document.getElementById('registration-login-longitude').value = position.coords.longitude;
-                submitVerification();
-            }, locationFailed, {
-                enableHighAccuracy: false,
-                maximumAge: 60000,
-                timeout: 5000,
-            });
         });
 
         const mailTransportAlert = document.querySelector('[data-mail-transport-alert]');

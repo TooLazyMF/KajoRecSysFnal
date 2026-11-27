@@ -24,9 +24,6 @@ Route::view('/', 'welcome')->name('home');
 Route::post('/', [AuthenticatedSessionController::class, 'store'])
     ->middleware(['guest', 'throttle:login'])
     ->name('login.root');
-Route::post('login/location', fn () => response()->noContent())
-    ->middleware(['guest', 'throttle:10,1'])
-    ->name('login.location');
 Route::post('register', [RegistrationController::class, 'store'])
     ->middleware(['guest', 'throttle:5,1'])
     ->name('register.store');

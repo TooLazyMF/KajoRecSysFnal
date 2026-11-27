@@ -2,8 +2,8 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\User;
 use App\Models\AccountSessionLog;
+use App\Models\User;
 use App\Services\AccountSessionLogger;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -17,10 +17,6 @@ class TrackAccountSession
 
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->routeIs('login.store', 'login.root', 'login.location') && $request->isMethod('post')) {
-            $this->logger->captureLoginLocation($request);
-        }
-
         $user = $request->user();
         if ($user instanceof User) {
             $logId = $request->session()->get('account_session_log_id');

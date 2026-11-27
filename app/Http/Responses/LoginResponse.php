@@ -4,7 +4,6 @@ namespace App\Http\Responses;
 
 use App\Models\User;
 use App\Services\AccountSessionLogger;
-use Illuminate\Support\Facades\Auth;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
 
 class LoginResponse implements LoginResponseContract
@@ -15,16 +14,6 @@ class LoginResponse implements LoginResponseContract
     {
         $user = $request->user();
         if ($user instanceof User) {
-            if (! $this->sessionLogger->hasPendingLoginLocation($request)) {
-                Auth::guard('web')->logout();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-
-                return redirect()->route('login')->withErrors([
-                    'share_location' => 'Location access is required to sign in and record this device.',
-                ]);
-            }
-
             $this->sessionLogger->start($request, $user);
         }
 

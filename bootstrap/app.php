@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('account-sessions:close-idle')->everyMinute();
+        $schedule->command('appointments:notify-upcoming')->everyMinute()->withoutOverlapping();
         $schedule->command('appointments:notify-overdue')->everyMinute()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {

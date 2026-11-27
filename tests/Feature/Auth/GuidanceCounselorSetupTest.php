@@ -49,9 +49,6 @@ class GuidanceCounselorSetupTest extends TestCase
         $this->post(route('login.store'), [
             'email' => 'adminexample@gmail.com',
             'password' => 'TemporaryCounselorPassword123',
-            'share_location' => '1',
-            'login_latitude' => '14.5995',
-            'login_longitude' => '120.9842',
         ])->assertRedirect(route('counselor.profile.edit'));
 
         $this->assertAuthenticatedAs($counselor);
@@ -148,18 +145,12 @@ class GuidanceCounselorSetupTest extends TestCase
         $this->post(route('login.store'), [
             'email' => 'adminexample@gmail.com',
             'password' => 'TemporaryCounselorPassword123',
-            'share_location' => '1',
-            'login_latitude' => '14.5995',
-            'login_longitude' => '120.9842',
         ])->assertRedirect(route('home'));
         $this->assertGuest();
 
         $this->post(route('login.store'), [
             'email' => 'alex.counselor@example.com',
             'password' => 'SecureCounselor123',
-            'share_location' => '1',
-            'login_latitude' => '14.5995',
-            'login_longitude' => '120.9842',
         ])->assertRedirect(route('guidance.dashboard'));
         $this->get(route('guidance.dashboard'))
             ->assertRedirect(route('verification.notice'));
