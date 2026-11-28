@@ -56,6 +56,47 @@ class NotificationsTest extends TestCase
             ->assertSee('You have no notifications.');
     }
 
+    public function test_guidance_counselor_cif_activity_is_excluded_from_notification_count_and_inbox(): void
+    {
+        Mail::fake();
+        $counselor = User::factory()->create([
+            'email' => 'guidance@example.test',
+            'role' => 'guidance_counselor',
+        ]);
+        $student = User::factory()->create(['role' => 'student']);
+        $cifAssignment = SlipAssignment::create([
+            'assigned_by' => $counselor->id,
+            'student_id' => $student->id,
+            'slip' => 'qf-bo-oss-04-client-information-form',
+        ]);
+
+        $counselor->notify(new WorkflowActivity(
+            'CIF update',
+            'A client information form update.',
+            route('guidance.students-records'),
+            'slip',
+            $cifAssignment->id,
+        ));
+        $counselor->notify(new WorkflowActivity(
+            'Appointment update',
+            'An appointment needs attention.',
+            route('appointments.index'),
+            'appointment',
+            1,
+        ));
+
+        $this->actingAs($counselor)
+            ->get(route('guidance.dashboard'))
+            ->assertOk()
+            ->assertSee('Notifications (1)');
+
+        $this->actingAs($counselor)
+            ->get(route('notifications.index'))
+            ->assertOk()
+            ->assertSee('Appointment update')
+            ->assertDontSee('CIF update');
+    }
+
     public function test_native_notification_setup_uses_a_modal_on_the_notifications_page(): void
     {
         config(['webpush.vapid.public_key' => 'test-public-key']);

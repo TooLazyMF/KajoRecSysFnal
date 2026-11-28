@@ -25,7 +25,8 @@
                 'guidance_counselor' => 'guidance.dashboard',
                 default => 'dashboard',
             };
-            $unreadNotificationsCount = auth()->user()->unreadNotifications()->count();
+            $unreadNotificationsCount = app(\App\Support\NotificationInbox::class)
+                ->unreadCount(auth()->user());
         @endphp
 
         <flux:sidebar sticky collapsible="mobile" class="kajorec-sidebar border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">

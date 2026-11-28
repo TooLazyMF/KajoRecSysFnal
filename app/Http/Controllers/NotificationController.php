@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\NotificationInbox;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -9,14 +10,10 @@ use Illuminate\View\View;
 
 class NotificationController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, NotificationInbox $inbox): View
     {
-        $notifications = $request->user()
-            ->notifications()
-            ->whereNull('read_at')
-            ->latest()
-            ->limit(50)
-            ->get();
+        $notifications = $inbox->unreadFor($request->user())
+            ->take(50);
 
         return view('notifications.index', compact('notifications'));
     }

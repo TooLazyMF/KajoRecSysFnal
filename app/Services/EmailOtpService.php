@@ -6,21 +6,35 @@ use App\Models\User;
 use App\Notifications\EmailOtp;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
 class EmailOtpService
 {
     public const EXPIRATION_MINUTES = 30;
 
-    public function send(User $user, string $purpose, string $subject, string $message): void
-    {
+    public function send(
+        User $user,
+        string $purpose,
+        string $subject,
+        string $message,
+        ?string $recipientEmail = null,
+    ): void {
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
         Cache::put($this->cacheKey($user, $purpose), [
             'code_hash' => Hash::make($code),
         ], now()->addMinutes(self::EXPIRATION_MINUTES));
 
-        $user->notify(new EmailOtp($code, $subject, $message));
+        $notification = new EmailOtp($code, $subject, $message, $user->name);
+
+        if ($recipientEmail !== null) {
+            Notification::route('mail', $recipientEmail)->notify($notification);
+
+            return;
+        }
+
+        $user->notify($notification);
     }
 
     public function verify(User $user, string $purpose, string $code): bool
