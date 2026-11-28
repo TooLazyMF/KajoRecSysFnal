@@ -3,6 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use App\Notifications\EmailOtp;
 use App\Notifications\PasswordResetOtp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -13,6 +14,24 @@ use Tests\TestCase;
 class PasswordResetOtpTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_otp_emails_use_the_bsu_bokod_campus_logo(): void
+    {
+        $user = User::factory()->create();
+
+        $messages = [
+            (new PasswordResetOtp('123456'))->toMail($user),
+            (new EmailOtp('123456', 'Verify your email address', 'Enter this code to verify your email address:', $user->name))->toMail($user),
+        ];
+
+        foreach ($messages as $message) {
+            $html = (string) $message->render();
+
+            $this->assertStringContainsString(asset('images/BSUBC-logo.png'), $html);
+            $this->assertStringContainsString('Benguet State University - Bokod Campus logo', $html);
+            $this->assertStringNotContainsString('Laravel Logo', $html);
+        }
+    }
 
     public function test_reset_form_shows_the_email_and_change_email_and_cancel_actions(): void
     {

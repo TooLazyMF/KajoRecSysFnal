@@ -308,10 +308,7 @@ class SlipSubmissionController extends Controller
                 ->where(function ($query): void {
                     $query->where(function ($query): void {
                         $query->where('status', 'submitted')
-                            ->whereIn('slip', array_values(array_diff(
-                                SlipCatalog::workflowSlugs(),
-                                ['student-referral-slip']
-                            )));
+                            ->whereIn('slip', SlipCatalog::reviewableWorkflowSlugs());
                     })->orWhere(function ($query): void {
                         $query->where('status', 'pending')
                             ->whereIn('slip', array_keys(SlipCatalog::studentRequestForms()))
@@ -607,10 +604,7 @@ class SlipSubmissionController extends Controller
             ->where(function ($query): void {
                 $query->where(function ($query): void {
                     $query->where('status', 'submitted')
-                        ->whereIn('slip', array_values(array_diff(
-                            SlipCatalog::workflowSlugs(),
-                            ['student-referral-slip']
-                        )));
+                        ->whereIn('slip', SlipCatalog::reviewableWorkflowSlugs());
                 })->orWhere(function ($query): void {
                     $query->where('status', 'pending')
                         ->whereIn('slip', array_keys(SlipCatalog::studentRequestForms()))
@@ -636,6 +630,11 @@ class SlipSubmissionController extends Controller
             $slipAssignment->slip !== 'student-referral-slip',
             409,
             'Student referrals are received directly and do not require approval.'
+        );
+        abort_unless(
+            $slipAssignment->slip !== 'qf-bo-oss-04-client-information-form',
+            409,
+            'Client Information Forms are saved directly by students and do not require counselor approval.'
         );
 
         $guidanceData = [];
@@ -1489,7 +1488,7 @@ class SlipSubmissionController extends Controller
         );
         abort_unless(
             in_array($slipAssignment->status, ['pending', 'submitted'], true)
-                || ($slipAssignment->slip === 'qf-bo-oss-04-client-information-form' && $slipAssignment->status === 'approved'),
+                || $slipAssignment->slip === 'qf-bo-oss-04-client-information-form',
             403
         );
 
@@ -1552,7 +1551,7 @@ class SlipSubmissionController extends Controller
         );
         abort_unless(
             (in_array($slipAssignment->status, ['pending', 'submitted'], true)
-                || ($slipAssignment->slip === 'qf-bo-oss-04-client-information-form' && $slipAssignment->status === 'approved'))
+                || $slipAssignment->slip === 'qf-bo-oss-04-client-information-form')
                 && $slipAssignment->slip !== 'slip_information',
             403
         );
@@ -1879,12 +1878,13 @@ class SlipSubmissionController extends Controller
         ?SlipSubmission $existingSubmission = null,
         ?int $submissionUserId = null
     ): RedirectResponse {
+        $isClientInformationForm = $slip === 'qf-bo-oss-04-client-information-form';
         $pdfPath = $slip === 'qf-bo-oss-04-client-information-form'
             ? 'slip-submissions/'.Str::uuid().'.docx'
             : ($existingSubmission?->pdf_path ?? 'slip-submissions/'.Str::uuid().'.pdf');
 
         try {
-            $submission = DB::transaction(function () use ($request, $slip, $data, $definition, $pdfGenerator, $docxGenerator, $pdfPath, $assignment, $existingSubmission, $submissionUserId) {
+            $submission = DB::transaction(function () use ($request, $slip, $data, $definition, $pdfGenerator, $docxGenerator, $pdfPath, $assignment, $existingSubmission, $submissionUserId, $isClientInformationForm) {
                 $lockedAssignment = null;
 
                 if ($assignment) {
@@ -1894,7 +1894,7 @@ class SlipSubmissionController extends Controller
                         ->firstOrFail();
                     abort_unless(
                         in_array($lockedAssignment->status, ['pending', 'submitted'], true)
-                            || ($slip === 'qf-bo-oss-04-client-information-form' && $lockedAssignment->status === 'approved'),
+                            || $isClientInformationForm,
                         409
                     );
                 }
@@ -1912,9 +1912,9 @@ class SlipSubmissionController extends Controller
                     $submission->update([
                         'data' => $data,
                         'pdf_path' => $pdfPath,
-                        'review_status' => 'submitted',
+                        'review_status' => $isClientInformationForm ? 'approved' : 'submitted',
                         'approved_by' => null,
-                        'approved_at' => null,
+                        'approved_at' => $isClientInformationForm ? now() : null,
                     ]);
                 } else {
                     $submission = SlipSubmission::create([
@@ -1922,7 +1922,8 @@ class SlipSubmissionController extends Controller
                         'slip' => $slip,
                         'data' => $data,
                         'pdf_path' => $pdfPath,
-                        'review_status' => 'submitted',
+                        'review_status' => $isClientInformationForm ? 'approved' : 'submitted',
+                        'approved_at' => $isClientInformationForm ? now() : null,
                     ]);
                 }
 
@@ -1936,11 +1937,11 @@ class SlipSubmissionController extends Controller
 
                 if ($lockedAssignment) {
                     $assignmentUpdates = [
-                        'status' => 'submitted',
+                        'status' => $isClientInformationForm ? 'approved' : 'submitted',
                         'slip_submission_id' => $submission->id,
                         'completed_at' => now(),
                         'approved_by' => null,
-                        'approved_at' => null,
+                        'approved_at' => $isClientInformationForm ? now() : null,
                     ];
                     if (
                         $lockedAssignment->assigned_by === $lockedAssignment->student_id

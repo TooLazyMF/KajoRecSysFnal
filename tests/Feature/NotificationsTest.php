@@ -97,6 +97,46 @@ class NotificationsTest extends TestCase
             ->assertDontSee('CIF update');
     }
 
+    public function test_student_cif_submissions_are_not_notifications_or_counted_as_unread(): void
+    {
+        $student = User::factory()->create([
+            'email' => null,
+            'role' => 'student',
+        ]);
+        $submission = SlipSubmission::create([
+            'user_id' => $student->id,
+            'slip' => 'qf-bo-oss-04-client-information-form',
+            'data' => [],
+            'pdf_path' => 'client-information-form.docx',
+        ]);
+
+        $student->notify(new WorkflowActivity(
+            'Form submitted',
+            'The Client Information Form was submitted and is awaiting review.',
+            route('slips.submissions.show', $submission),
+            'slip',
+            $submission->id,
+        ));
+        $student->notify(new WorkflowActivity(
+            'Appointment update',
+            'Your appointment has been updated.',
+            route('appointments.index'),
+            'appointment',
+            1,
+        ));
+
+        $this->actingAs($student)
+            ->get(route('student.dashboard'))
+            ->assertOk()
+            ->assertSee('Notifications (1)');
+
+        $this->actingAs($student)
+            ->get(route('notifications.index'))
+            ->assertOk()
+            ->assertSee('Appointment update')
+            ->assertDontSee('Client Information Form was submitted');
+    }
+
     public function test_native_notification_setup_uses_a_modal_on_the_notifications_page(): void
     {
         config(['webpush.vapid.public_key' => 'test-public-key']);

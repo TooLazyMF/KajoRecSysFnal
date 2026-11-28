@@ -108,7 +108,7 @@ class SlipSubmissionTest extends TestCase
         $details['college'] = 'CAT';
         $details['contact_number'] = '09876543210';
 
-        $this->actingAs($student)
+        $response = $this->actingAs($student)
             ->post(route('assigned-slips.submit', $assignment), ['details' => $details])
             ->assertSessionHasNoErrors();
 
@@ -117,6 +117,18 @@ class SlipSubmissionTest extends TestCase
         Notification::assertNotSentTo($counselor, WorkflowActivity::class);
 
         $submission = SlipSubmission::query()->where('user_id', $student->id)->firstOrFail();
+        $response->assertRedirect(route('slips.submissions.show', $submission));
+        $this->actingAs($student)
+            ->get(route('slips.submissions.show', $submission))
+            ->assertOk()
+            ->assertSee('Client Information Form Saved')
+            ->assertSee('It does not need counselor approval.')
+            ->assertSee('Return to profile');
+        $this->assertSame('approved', $submission->review_status);
+        $this->assertNull($submission->approved_by);
+        $this->assertNotNull($submission->approved_at);
+        $this->assertSame('approved', $assignment->fresh()->status);
+        $this->assertNull($assignment->fresh()->approved_by);
         $this->assertSame('Ada', $submission->data['first_name']);
         $this->assertSame('Lovelace', $submission->data['middle_name']);
         $this->assertSame('Byron', $submission->data['last_name']);
@@ -125,6 +137,15 @@ class SlipSubmissionTest extends TestCase
         $this->assertSame('BSIT 3', $submission->data['course_year']);
         $this->assertSame('09123456789', $submission->data['contact_number']);
         $this->assertSame('Student answer', $submission->data['address']);
+
+        $this->actingAs($counselor)
+            ->get(route('guidance.slip-review'))
+            ->assertOk()
+            ->assertDontSee('CIF-1001');
+
+        $this->actingAs($counselor)
+            ->post(route('guidance.slip-review.approve', $assignment))
+            ->assertStatus(409);
     }
 
     public function test_client_information_form_locks_details_from_the_logged_in_account_without_a_roster_match(): void
@@ -1083,6 +1104,8 @@ class SlipSubmissionTest extends TestCase
             ->assertSee('bg-[#09ba44]', false)
             ->assertSee('dark:bg-[#20783e]', false)
             ->assertSee('Student Dashboard')
+            ->assertSee('Activities')
+            ->assertDontSee('Quick Actions')
             ->assertSee('Assigned Slips')
             ->assertSee('Slip History')
             ->assertSee('Request a Form')

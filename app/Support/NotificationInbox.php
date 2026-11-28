@@ -7,6 +7,7 @@ use App\Models\SlipSubmission;
 use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class NotificationInbox
 {
@@ -15,28 +16,28 @@ class NotificationInbox
      */
     public function unreadFor(User $user, int $limit = 50): Collection
     {
-        if ($user->role !== 'guidance_counselor') {
+        if (! in_array($user->role, ['student', 'guidance_counselor'], true)) {
             return $user->unreadNotifications()
                 ->limit($limit)
                 ->get();
         }
 
-        return $this->guidanceUnreadNotifications($user)->take($limit);
+        return $this->unreadWithoutClientInformationNotifications($user)->take($limit);
     }
 
     public function unreadCount(User $user): int
     {
-        if ($user->role !== 'guidance_counselor') {
+        if (! in_array($user->role, ['student', 'guidance_counselor'], true)) {
             return $user->unreadNotifications()->count();
         }
 
-        return $this->guidanceUnreadNotifications($user)->count();
+        return $this->unreadWithoutClientInformationNotifications($user)->count();
     }
 
     /**
      * @return Collection<int, DatabaseNotification>
      */
-    private function guidanceUnreadNotifications(User $user): Collection
+    private function unreadWithoutClientInformationNotifications(User $user): Collection
     {
         $notifications = $user->unreadNotifications;
         $cifAssignmentIds = SlipAssignment::query()
@@ -53,18 +54,25 @@ class NotificationInbox
         return $notifications->reject(static function ($notification) use ($cifAssignmentIds, $cifSubmissionIds): bool {
             $data = $notification->data ?? [];
             $activityId = $data['activity_id'] ?? null;
+            $message = implode(' ', array_filter([
+                $data['title'] ?? null,
+                $data['message'] ?? null,
+            ], 'is_string'));
+
+            if (Str::contains(Str::lower($message), 'client information form')) {
+                return true;
+            }
 
             if (! is_numeric($activityId)) {
                 return false;
             }
 
-            return (
-                ($data['activity_type'] ?? null) === 'slip'
-                && in_array((int) $activityId, $cifAssignmentIds, true)
-            ) || (
-                ($data['activity_type'] ?? null) === 'slip-submitted'
-                && in_array((int) $activityId, $cifSubmissionIds, true)
-            );
+            return match ($data['activity_type'] ?? null) {
+                'slip' => in_array((int) $activityId, $cifAssignmentIds, true)
+                    || in_array((int) $activityId, $cifSubmissionIds, true),
+                'slip-submitted' => in_array((int) $activityId, $cifSubmissionIds, true),
+                default => false,
+            };
         });
     }
 }

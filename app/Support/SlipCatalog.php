@@ -315,6 +315,17 @@ class SlipCatalog
     }
 
     /**
+     * @return list<string>
+     */
+    public static function reviewableWorkflowSlugs(): array
+    {
+        return array_values(array_diff(self::workflowSlugs(), [
+            'student-referral-slip',
+            'qf-bo-oss-04-client-information-form',
+        ]));
+    }
+
+    /**
      * @param  list<array<string, mixed>>  $extra
      * @return array{title: string, fields: list<array<string, mixed>>}
      */

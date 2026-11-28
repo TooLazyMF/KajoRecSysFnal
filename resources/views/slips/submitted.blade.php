@@ -1,14 +1,20 @@
-<x-layouts::app :title="__('Slip Request Submitted')">
+<x-layouts::app :title="$submission->slip === 'qf-bo-oss-04-client-information-form' ? __('Client Information Form Saved') : __('Slip Request Submitted')">
     <main class="min-h-screen bg-zinc-50 px-4 py-8 sm:px-6 lg:px-8">
         <div class="mx-auto max-w-5xl space-y-6">
             <section class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-zinc-200">
                 <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <flux:heading size="xl">Request Submitted</flux:heading>
+                        <flux:heading size="xl">
+                            {{ $submission->slip === 'qf-bo-oss-04-client-information-form' ? __('Client Information Form Saved') : __('Request Submitted') }}
+                        </flux:heading>
                         <flux:text class="mt-2 text-zinc-600">
-                            Your {{ $slip['title'] }} was submitted with status: {{ ucfirst($submission->review_status) }}.
-                            @if ($submission->review_status !== 'approved')
-                                You can edit it until it is approved by the Guidance Office.
+                            @if ($submission->slip === 'qf-bo-oss-04-client-information-form')
+                                Your Client Information Form has been saved to your student profile. It does not need counselor approval.
+                            @else
+                                Your {{ $slip['title'] }} was submitted with status: {{ ucfirst($submission->review_status) }}.
+                                @if ($submission->review_status !== 'approved')
+                                    You can edit it until it is approved by the Guidance Office.
+                                @endif
                             @endif
                         </flux:text>
                     </div>
@@ -28,6 +34,14 @@
                             Done
                         </a>
                         @if ($submission->slip === 'qf-bo-oss-04-client-information-form')
+                            @if (auth()->user()->role === 'student')
+                                <a
+                                    href="{{ route('profile.edit') }}"
+                                    class="inline-flex items-center justify-center rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
+                                >
+                                    Return to profile
+                                </a>
+                            @endif
                             <a
                                 href="{{ route('slips.submissions.pdf', $submission) }}"
                                 class="inline-flex items-center justify-center rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-700"

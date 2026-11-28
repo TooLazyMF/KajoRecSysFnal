@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Fortify\CreateNewUser;
-use App\Services\TeacherAccountRequestService;
+use App\Models\RosterImportState;
 use App\Services\PendingRegistrationService;
+use App\Services\TeacherAccountRequestService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +21,14 @@ class RegistrationController extends Controller
         TeacherAccountRequestService $teacherAccountRequests,
     ): RedirectResponse {
         $validated = $createNewUser->validateRegistration($request->all());
+
+        if (! RosterImportState::isImported(RosterImportState::STUDENTS)) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'id_number' => 'The guidance counselor has not imported the student list yet. Registration will be available after the student list is imported.',
+                ]);
+        }
 
         if (! $createNewUser->matchesStudentReference($validated)) {
             if (! $request->boolean('teacher_request_confirmation')) {
@@ -42,7 +51,8 @@ class RegistrationController extends Controller
             $teacherAccountRequests->createFromRegistration($validated, $request->file('verification_photo'));
 
             return to_route('home', ['panel' => 'register'])
-                ->with('status', 'Your teacher account request was submitted. Verify your email from the link we sent so the guidance counselor can review it.');
+                ->with('teacher_account_request_submitted', true)
+                ->with('status', "Your request to open an account has been sent to the counselor. Please verify your email if prompted, then wait for the result. The counselor's decision will be sent to this email address.");
         }
 
         try {

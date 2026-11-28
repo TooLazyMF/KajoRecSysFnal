@@ -246,6 +246,30 @@
             font-size: 14px;
         }
 
+        .teacher-request-success {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin: 0 0 20px;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: var(--primary-soft);
+            color: var(--primary-ink);
+            font-size: 14px;
+            line-height: 1.55;
+        }
+
+        .teacher-request-success svg {
+            flex: 0 0 20px;
+            margin-top: 1px;
+        }
+
+        .teacher-request-success strong {
+            display: block;
+            margin-bottom: 3px;
+        }
+
         .mail-transport-alert {
             position: fixed;
             top: 24px;
@@ -406,6 +430,201 @@
             font-weight: 400;
         }
 
+        .teacher-verification-dialog {
+            position: fixed;
+            inset: 0;
+            width: min(36rem, calc(100vw - 2rem));
+            max-height: calc(100dvh - 2rem);
+            margin: auto;
+            overflow-y: auto;
+            padding: 0;
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            background: var(--surface);
+            color: var(--text);
+            box-shadow: 0 28px 80px rgba(0, 0, 0, 0.3);
+        }
+
+        .teacher-verification-dialog::backdrop {
+            background: rgba(5, 12, 7, 0.72);
+            backdrop-filter: blur(4px);
+        }
+
+        .teacher-verification-content {
+            display: grid;
+            gap: 20px;
+            padding: clamp(20px, 5vw, 32px);
+        }
+
+        .teacher-verification-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .teacher-verification-icon {
+            display: grid;
+            flex: 0 0 48px;
+            width: 48px;
+            height: 48px;
+            place-items: center;
+            border-radius: 15px;
+            background: var(--primary-soft);
+            color: var(--primary-ink);
+        }
+
+        .teacher-verification-eyebrow {
+            margin: 0 0 3px;
+            color: var(--primary-ink);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .teacher-verification-title {
+            margin: 0;
+            color: var(--heading);
+            font-size: clamp(21px, 4vw, 26px);
+            line-height: 1.2;
+        }
+
+        .teacher-verification-description {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.65;
+        }
+
+        .teacher-verification-steps {
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: var(--field-bg);
+        }
+
+        .teacher-verification-steps strong {
+            display: block;
+            margin-bottom: 7px;
+            color: var(--heading);
+            font-size: 13px;
+        }
+
+        .teacher-verification-steps ol {
+            display: grid;
+            gap: 5px;
+            margin: 0;
+            padding-left: 20px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .teacher-verification-upload {
+            display: grid;
+            gap: 8px;
+            color: var(--label);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .teacher-verification-upload input {
+            width: 100%;
+            min-height: 48px;
+            padding: 7px;
+            border: 1px solid var(--border);
+            border-radius: 11px;
+            background: var(--field-bg);
+            color: var(--text);
+            font-size: 13px;
+        }
+
+        .teacher-verification-upload input::file-selector-button {
+            margin-right: 12px;
+            padding: 9px 12px;
+            border: 0;
+            border-radius: 8px;
+            background: var(--primary-soft);
+            color: var(--primary-ink);
+            cursor: pointer;
+            font: inherit;
+            font-weight: 700;
+        }
+
+        .teacher-verification-help {
+            margin: -12px 0 0;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .teacher-verification-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding-top: 4px;
+        }
+
+        .teacher-verification-button {
+            display: inline-flex;
+            min-height: 44px;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            padding: 0 18px;
+            border: 1px solid transparent;
+            border-radius: 11px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 700;
+            transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+        }
+
+        .teacher-verification-button:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        .teacher-verification-button:focus-visible,
+        .teacher-verification-upload input:focus-visible {
+            outline: 3px solid var(--focus-ring);
+            outline-offset: 2px;
+        }
+
+        .teacher-verification-button:disabled {
+            cursor: wait;
+            opacity: 0.75;
+        }
+
+        .teacher-verification-cancel {
+            border-color: var(--border);
+            background: var(--surface);
+            color: var(--text);
+        }
+
+        .teacher-verification-cancel:hover:not(:disabled) {
+            background: var(--field-bg);
+        }
+
+        .teacher-verification-submit {
+            background: var(--primary);
+            color: var(--on-primary);
+        }
+
+        .teacher-verification-submit:hover:not(:disabled) {
+            background: var(--primary-hover);
+        }
+
+        .teacher-verification-submit-status {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13px;
+            text-align: right;
+        }
+
+        .teacher-verification-submit-status[hidden] {
+            display: none;
+        }
+
         .form-options {
             display: flex;
             align-items: center;
@@ -479,6 +698,20 @@
 
         .switch-copy .text-button {
             margin-left: 4px;
+        }
+
+        @media (max-width: 520px) {
+            .teacher-verification-actions {
+                flex-direction: column-reverse;
+            }
+
+            .teacher-verification-button {
+                width: 100%;
+            }
+
+            .teacher-verification-submit-status {
+                text-align: left;
+            }
         }
 
         .welcome-panel {
@@ -1121,6 +1354,18 @@
                 <h1 class="form-heading" tabindex="-1">Create your account</h1>
                 <p class="form-intro">A few details and you’ll be ready to get started.</p>
                 <p class="form-intro">Use an email address you can access. We will send a verification code; verify it to use your account.</p>
+                @if (session('teacher_account_request_submitted'))
+                    <div class="teacher-request-success" role="status" aria-live="polite">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" />
+                            <circle cx="12" cy="12" r="10" />
+                        </svg>
+                        <div>
+                            <strong>Request submitted</strong>
+                            {{ session('status') }}
+                        </div>
+                    </div>
+                @endif
                 @error('registration')
                     <p class="field-error" role="alert">{{ $message }}</p>
                 @enderror
@@ -1261,35 +1506,58 @@
 
                     @if (session('show_teacher_verification_modal'))
                         <dialog
-                            class="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[min(32rem,calc(100%-2rem))] overflow-y-auto rounded-2xl border border-neutral-200 bg-white p-0 text-neutral-900 shadow-2xl backdrop:bg-black/50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-zinc-100"
+                            class="teacher-verification-dialog"
                             aria-labelledby="teacher-verification-heading"
                             aria-describedby="teacher-verification-description"
                             data-teacher-verification-modal
                         >
-                            <div class="space-y-5 p-6">
-                                <div class="space-y-2">
-                                    <h2 id="teacher-verification-heading" class="text-xl font-semibold">Faculty verification required</h2>
-                                    <p id="teacher-verification-description" class="text-sm text-neutral-600 dark:text-neutral-300">
-                                        We could not match your information with the imported student list. If you are a faculty member, submit a photo of your faculty ID or a selfie for counselor review.
-                                    </p>
+                            <div class="teacher-verification-content">
+                                <div class="teacher-verification-header">
+                                    <span class="teacher-verification-icon" aria-hidden="true">
+                                        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                            <rect x="3" y="5" width="18" height="14" rx="2" />
+                                            <circle cx="9" cy="11" r="2" />
+                                            <path stroke-linecap="round" d="M6.5 16c.6-1.3 1.4-2 2.5-2s1.9.7 2.5 2M14 10h4M14 14h4" />
+                                        </svg>
+                                    </span>
+                                    <div>
+                                        <p class="teacher-verification-eyebrow">Account request</p>
+                                        <h2 id="teacher-verification-heading" class="teacher-verification-title">Faculty verification</h2>
+                                    </div>
                                 </div>
 
-                                <label class="field" for="register-verification-photo">
-                                    Faculty verification photo
+                                <p id="teacher-verification-description" class="teacher-verification-description">
+                                    We could not match these details with the imported student list. If you are a faculty member, upload a faculty ID photo or a selfie so the guidance counselor can verify your request.
+                                </p>
+
+                                <div class="teacher-verification-steps">
+                                    <strong>What happens next?</strong>
+                                    <ol>
+                                        <li>Upload a clear photo of your faculty ID or a selfie.</li>
+                                        <li>The guidance counselor will review your request.</li>
+                                        <li>We will email you the decision.</li>
+                                    </ol>
+                                </div>
+
+                                <label class="teacher-verification-upload" for="register-verification-photo">
+                                    Verification photo
                                     <input id="register-verification-photo" name="verification_photo" type="file" accept="image/jpeg,image/png,image/webp" capture="user" required>
                                 </label>
-                                <p class="text-xs text-neutral-500 dark:text-neutral-400">JPG, PNG, or WebP up to 5 MB. The image is used only for counselor review.</p>
+                                <p class="teacher-verification-help">Choose a JPG, PNG, or WebP image up to 5 MB. Your photo is stored securely and only used for counselor review.</p>
 
                                 @error('verification_photo')
                                     <p class="field-error" role="alert">{{ $message }}</p>
                                 @enderror
 
-                                <div class="flex justify-end gap-3">
-                                    <button type="button" class="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800" data-close-teacher-modal>
+                                <p class="teacher-verification-submit-status" role="status" aria-live="polite" data-teacher-submit-status hidden></p>
+
+                                <div class="teacher-verification-actions">
+                                    <button type="button" class="teacher-verification-button teacher-verification-cancel" data-close-teacher-modal>
                                         Cancel
                                     </button>
-                                    <button type="submit" class="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800" data-confirm-teacher-request>
-                                        Submit for review
+                                    <button type="submit" class="teacher-verification-button teacher-verification-submit" data-confirm-teacher-request data-loading-label="Submitting request...">
+                                        <span data-button-label>Submit for review</span>
+                                        <span class="loading-spinner" data-loading-spinner aria-hidden="true" hidden></span>
                                     </button>
                                 </div>
                             </div>
@@ -1601,8 +1869,16 @@
             });
         });
 
-        authPage.querySelector('[data-auth-view="register"] form').addEventListener('submit', (event) => {
-            if (event.currentTarget.querySelector('[data-teacher-request-confirmation]')?.value === '1') {
+        const registrationForm = authPage.querySelector('[data-auth-view="register"] form');
+
+        registrationForm.addEventListener('submit', (event) => {
+            const form = event.currentTarget;
+            const verificationModal = form.querySelector('[data-teacher-verification-modal]');
+            const confirmation = form.querySelector('[data-teacher-request-confirmation]');
+
+            if (verificationModal?.open) {
+                confirmation.value = '1';
+                showFormLoading(form, form.querySelector('[data-confirm-teacher-request]'));
                 return;
             }
 
@@ -1613,7 +1889,7 @@
                 return;
             }
 
-            showFormLoading(event.currentTarget);
+            showFormLoading(form, event.submitter instanceof HTMLButtonElement ? event.submitter : undefined);
         });
 
         const loginForm = authPage.querySelector('#landing-login-form');
@@ -1629,18 +1905,23 @@
             showFormLoading(loginForm);
         });
 
-        function showFormLoading(form) {
-            const button = form.querySelector('[data-loading-button]');
+        function showFormLoading(form, button = form.querySelector('[data-loading-button]')) {
             if (!button) return;
 
             form.setAttribute('aria-busy', 'true');
             button.disabled = true;
-            button.querySelector('[data-button-label]').textContent = button.dataset.loadingLabel;
-            button.querySelector('[data-loading-spinner]').hidden = false;
+            const label = button.querySelector('[data-button-label]');
+            if (label) label.textContent = button.dataset.loadingLabel;
+            const spinner = button.querySelector('[data-loading-spinner]');
+            if (spinner) spinner.hidden = false;
 
-            const status = form.querySelector('[data-submit-status]');
-            status.textContent = button.dataset.loadingLabel;
-            status.hidden = false;
+            const status = button.matches('[data-confirm-teacher-request]')
+                ? form.querySelector('[data-teacher-submit-status]')
+                : form.querySelector('[data-submit-status]');
+            if (status) {
+                status.textContent = button.dataset.loadingLabel;
+                status.hidden = false;
+            }
         }
 
         const mobileLayout = window.matchMedia('(max-width: 760px)');
@@ -1672,9 +1953,6 @@
                 closeTeacherVerificationModal();
             });
             teacherVerificationModal.querySelector('[data-close-teacher-modal]')?.addEventListener('click', closeTeacherVerificationModal);
-            teacherVerificationModal.querySelector('[data-confirm-teacher-request]')?.addEventListener('click', () => {
-                teacherRequestConfirmation.value = '1';
-            });
         }
 
         const verificationModal = document.getElementById('registration-verification-modal');

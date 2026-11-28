@@ -4,15 +4,18 @@ namespace Tests\Feature\Auth;
 
 use App\Models\RosterImportState;
 use App\Models\StudentReference;
+use App\Models\TeacherAccountRequest;
 use App\Models\User;
 use App\Notifications\EmailOtp;
 use App\Services\PendingRegistrationService;
 use App\Support\SensitiveLookup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Fortify\Features;
 use Symfony\Component\Mailer\Exception\TransportException;
 use Tests\TestCase;
@@ -80,8 +83,7 @@ class RegistrationTest extends TestCase
             ->assertSee('data-loading-spinner', false)
             ->assertSee('aria-live="polite"', false)
             ->assertSee('The guidance counselor has not imported the student list yet.')
-            ->assertSee('Teacher account requests require an imported teacher list and counselor approval.')
-            ->assertSee('Teacher account requests require an imported teacher list and counselor approval.')
+            ->assertSee('Teacher requests are reviewed by the guidance counselor after you submit the form.')
             ->assertSee(route('teacher.register'), false)
             ->assertSee('--primary: #09ba44;', false)
             ->assertSee('@media (prefers-color-scheme: dark)', false)
@@ -155,10 +157,12 @@ class RegistrationTest extends TestCase
 
     public function test_teacher_photo_prompt_only_appears_after_registration_misses_the_student_list(): void
     {
+        RosterImportState::markImported(RosterImportState::STUDENTS);
+
         $this->get(route('home', ['panel' => 'register']))
             ->assertOk()
-            ->assertDontSee('Faculty verification photo')
-            ->assertDontSee('Faculty verification required');
+            ->assertDontSee('Verification photo')
+            ->assertDontSee('Faculty verification');
 
         $registration = [
             '_welcome_panel' => 'register',
@@ -180,8 +184,8 @@ class RegistrationTest extends TestCase
             ->assertOk()
             ->assertSee('data-mode="register"', false)
             ->assertSee('data-teacher-verification-modal', false)
-            ->assertSee('Faculty verification required')
-            ->assertSee('Faculty verification photo');
+            ->assertSee('Faculty verification')
+            ->assertSee('What happens next?');
 
         $this->from(route('home'))
             ->post(route('register.store'), [
@@ -194,9 +198,49 @@ class RegistrationTest extends TestCase
 
         $this->get(route('home'))
             ->assertOk()
-            ->assertSee('Faculty verification photo')
+            ->assertSee('Verification photo')
+            ->assertSee('What happens next?')
+            ->assertSee('data-teacher-submit-status', false)
             ->assertSee('is required');
         $this->assertDatabaseMissing('users', ['email' => 'faculty.member@example.com']);
+    }
+
+    public function test_teacher_account_request_submission_shows_a_counselor_review_confirmation(): void
+    {
+        Notification::fake();
+        Storage::fake('local');
+        RosterImportState::markImported(RosterImportState::STUDENTS);
+
+        $response = $this->from(route('home', ['panel' => 'register']))
+            ->post(route('register.store'), [
+                '_welcome_panel' => 'register',
+                'first_name' => 'Faculty',
+                'last_name' => 'Member',
+                'id_number' => '90002',
+                'gender' => 'female',
+                'email' => 'faculty.request@example.com',
+                'password' => 'RegistrationPass123',
+                'password_confirmation' => 'RegistrationPass123',
+                'teacher_request_confirmation' => '1',
+                'verification_photo' => UploadedFile::fake()->create('faculty-id.png', 10, 'image/png'),
+            ]);
+
+        $response->assertRedirect(route('home', ['panel' => 'register'], absolute: false))
+            ->assertSessionHas('teacher_account_request_submitted', true)
+            ->assertSessionHas(
+                'status',
+                "Your request to open an account has been sent to the counselor. Please verify your email if prompted, then wait for the result. The counselor's decision will be sent to this email address."
+            );
+
+        $teacherRequest = TeacherAccountRequest::query()
+            ->where('email_lookup_hash', SensitiveLookup::hash('email', 'faculty.request@example.com'))
+            ->firstOrFail();
+        $this->assertSame(TeacherAccountRequest::PENDING, $teacherRequest->status);
+
+        $this->get(route('home', ['panel' => 'register']))
+            ->assertOk()
+            ->assertSee('Request submitted')
+            ->assertSee('Your request to open an account has been sent to the counselor.');
     }
 
     public function test_student_registration_rejects_non_numeric_ids(): void
