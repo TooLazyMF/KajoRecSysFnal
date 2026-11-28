@@ -12,8 +12,14 @@
 
         @if (session()->has('password_reset_email'))
             <p class="text-sm text-zinc-600 dark:text-zinc-300">
-                Enter the code sent to your registered email and choose a new password.
+                If an active account uses this address, a reset OTP was sent to
+                <strong>{{ session('password_reset_email') }}</strong>.
             </p>
+
+            <form method="POST" action="{{ route('password.email.change') }}">
+                @csrf
+                <flux:button variant="ghost" type="submit" class="w-full">{{ __('Wrong email? Change email address') }}</flux:button>
+            </form>
 
             <form method="POST" action="{{ route('password.update') }}" class="flex flex-col gap-6">
                 @csrf
@@ -27,6 +33,11 @@
                 @csrf
                 <input type="hidden" name="email" value="{{ session('password_reset_email') }}">
                 <flux:button variant="ghost" type="submit" class="w-full">{{ __('Send another code') }}</flux:button>
+            </form>
+
+            <form method="POST" action="{{ route('password.cancel') }}">
+                @csrf
+                <flux:button variant="ghost" type="submit" class="w-full">{{ __('Cancel') }}</flux:button>
             </form>
         @else
             <form method="POST" action="{{ route('password.email') }}" class="flex flex-col gap-6">

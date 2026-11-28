@@ -1052,7 +1052,14 @@
                 @endif
 
                 @if (session()->has('password_reset_email'))
-                    <p class="form-intro">Enter the code sent to your email, then choose a new password.</p>
+                    <p class="form-intro">
+                        If an active account uses this address, a reset OTP was sent to
+                        <strong>{{ session('password_reset_email') }}</strong>.
+                    </p>
+                    <form method="POST" action="{{ route('password.email.change') }}" class="mb-3">
+                        @csrf
+                        <button class="text-button" type="submit">Wrong email? Change email address</button>
+                    </form>
                     <form method="POST" action="{{ route('password.update') }}" class="auth-form">
                         @csrf
                         <input type="hidden" name="_welcome_panel" value="forgot">
@@ -1085,6 +1092,10 @@
                         <input type="hidden" name="email" value="{{ session('password_reset_email') }}">
                         <input type="hidden" name="_welcome_panel" value="forgot">
                         <button class="text-button" type="submit">Send another code</button>
+                    </form>
+                    <form method="POST" action="{{ route('password.cancel') }}" class="mt-2">
+                        @csrf
+                        <button class="text-button" type="submit">Cancel</button>
                     </form>
                 @else
                     <form method="POST" action="{{ route('password.email') }}" class="auth-form">

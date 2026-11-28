@@ -35,6 +35,10 @@ Route::view('forgot-password', 'pages::auth.forgot-password')->name('password.re
 Route::post('forgot-password', [PasswordResetOtpController::class, 'send'])
     ->middleware('throttle:5,1')
     ->name('password.email');
+Route::post('forgot-password/change-email', [PasswordResetOtpController::class, 'changeEmail'])
+    ->name('password.email.change');
+Route::post('forgot-password/cancel', [PasswordResetOtpController::class, 'cancel'])
+    ->name('password.cancel');
 Route::post('reset-password', [PasswordResetOtpController::class, 'reset'])
     ->middleware('throttle:5,1')
     ->name('password.update');

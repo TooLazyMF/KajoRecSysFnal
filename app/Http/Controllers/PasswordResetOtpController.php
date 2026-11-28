@@ -19,6 +19,34 @@ class PasswordResetOtpController extends Controller
 {
     use PasswordValidationRules;
 
+    public function changeEmail(Request $request): RedirectResponse
+    {
+        $email = $request->session()->pull('password_reset_email');
+
+        if (is_string($email)) {
+            Cache::forget($this->cacheKey($email));
+        }
+
+        $input = ['_welcome_panel' => 'forgot'];
+
+        if (is_string($email)) {
+            $input['email'] = $email;
+        }
+
+        return back()->withInput($input);
+    }
+
+    public function cancel(Request $request): RedirectResponse
+    {
+        $email = $request->session()->pull('password_reset_email');
+
+        if (is_string($email)) {
+            Cache::forget($this->cacheKey($email));
+        }
+
+        return to_route('home')->with('status', 'Password reset cancelled.');
+    }
+
     public function send(Request $request): RedirectResponse
     {
         $validated = $request->validate([

@@ -5,6 +5,7 @@ namespace Tests\Feature\Auth;
 use App\Models\User;
 use App\Notifications\PasswordResetOtp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
@@ -12,6 +13,56 @@ use Tests\TestCase;
 class PasswordResetOtpTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_reset_form_shows_the_email_and_change_email_and_cancel_actions(): void
+    {
+        $email = 'reset@example.com';
+
+        $this->withSession(['password_reset_email' => $email])
+            ->get(route('password.request'))
+            ->assertOk()
+            ->assertSee($email)
+            ->assertSee('Wrong email? Change email address')
+            ->assertSeeInOrder(['6-digit code', 'New password', 'Confirm new password'])
+            ->assertSee('Cancel');
+
+        $this->withSession(['password_reset_email' => $email])
+            ->get(route('home'))
+            ->assertOk()
+            ->assertSee($email)
+            ->assertSee('Wrong email? Change email address')
+            ->assertSee('Cancel');
+    }
+
+    public function test_user_can_return_to_edit_the_reset_email(): void
+    {
+        $email = 'reset@example.com';
+        Cache::put('password-reset-otp:'.hash('sha256', $email), ['code_hash' => 'unused'], now()->addMinutes(30));
+
+        $this->withSession(['password_reset_email' => $email])
+            ->from(route('password.request'))
+            ->post(route('password.email.change'))
+            ->assertRedirect(route('password.request'))
+            ->assertSessionMissing('password_reset_email')
+            ->assertSessionHasInput('_welcome_panel', 'forgot')
+            ->assertSessionHasInput('email', $email);
+
+        $this->assertFalse(Cache::has('password-reset-otp:'.hash('sha256', $email)));
+    }
+
+    public function test_user_can_cancel_and_invalidate_a_pending_password_reset(): void
+    {
+        $email = 'reset@example.com';
+        Cache::put('password-reset-otp:'.hash('sha256', $email), ['code_hash' => 'unused'], now()->addMinutes(30));
+
+        $this->withSession(['password_reset_email' => $email])
+            ->post(route('password.cancel'))
+            ->assertRedirect(route('home'))
+            ->assertSessionMissing('password_reset_email')
+            ->assertSessionHas('status', 'Password reset cancelled.');
+
+        $this->assertFalse(Cache::has('password-reset-otp:'.hash('sha256', $email)));
+    }
 
     public function test_active_verified_user_can_reset_password_with_the_email_otp(): void
     {
